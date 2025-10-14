@@ -1,0 +1,11 @@
+node_modules
+.expo
+.expo-shared
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.expo
+.DS_Store
+*.swp
+.idea
+.vscode

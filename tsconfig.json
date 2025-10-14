@@ -10,7 +10,8 @@
       "@components/*": ["src/components/*"],
       "@hooks/*": ["src/hooks/*"],
       "@native/*": ["src/native/*"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@state/*": ["src/state/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "expo-env.d.ts"],

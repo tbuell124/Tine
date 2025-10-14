@@ -4,14 +4,17 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { InteractiveOrb } from '@components/InteractiveOrb';
+import { TunerProvider } from '@state/TunerStateContext';
 
 export default function App(): JSX.Element {
   return (
     <GestureHandlerRootView style={styles.root}>
-      <View style={styles.container}>
-        <StatusBar style="dark" />
-        <InteractiveOrb />
-      </View>
+      <TunerProvider>
+        <View style={styles.container}>
+          <StatusBar style="dark" />
+          <InteractiveOrb />
+        </View>
+      </TunerProvider>
     </GestureHandlerRootView>
   );
 }

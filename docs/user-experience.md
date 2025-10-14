@@ -4,11 +4,11 @@
 The Tine tuner centers on a dual-wheel interface that prioritizes clarity and accuracy:
 - **Outer Note Wheel**: Rotates in 30° increments to highlight the detected pitch class. The brushed-metal finish, chamfered edges, and laser-etched note labels provide immediate readability without ornamental clutter.
 - **Inner Cents Wheel**: Springs toward zero cents with damped overshoot and micro-jitters to visualize fine pitch adjustments. Subtle detent ticks every 5 cents, reinforced by light haptics, help performers make confident micro-corrections.
-- **Index Pip**: A slim, softly glowing marker at 12 o'clock anchors the target alignment. Its micro-bezel keeps the focus on accuracy while maintaining a premium look.
+- **Lock Halo & Badge**: When alignment lands inside the target window a luminous halo wraps the wheels and an "IN TUNE" badge illuminates at center, making the lock state unmistakable from any viewing angle.
 
 ## Visual Feedback States
-- **Approaching In-Tune**: As deviation narrows within ±2 cents, the index pip glow transitions from amber to soft green. The rim brightness increases gently, guiding attention without distraction.
-- **Locked Pitch**: When a note remains stable within ±2 cents for 400 ms, the interface emits a crisp success haptic, brightens the index, and triggers a fleeting shimmer along the outer rim. The effect communicates precision while keeping the screen composed.
+- **Approaching In-Tune**: As deviation narrows within ±2 cents, the lock halo glow transitions from amber to soft green. The rim brightness increases gently, guiding attention without distraction.
+- **Locked Pitch**: When a note remains stable within ±2 cents for 400 ms, the interface emits a crisp success haptic, brightens the halo, and triggers the centered "IN TUNE" badge along with a fleeting shimmer along the outer rim. The effect communicates precision while keeping the screen composed.
 - **Listening / Stabilizing**: If the input signal is weak or fluctuating, both wheels coast smoothly and a minimal text indicator (“Listening…” or “Stabilizing…”) appears beneath the tuner, signaling the system’s state without extra animation.
 
 ## Motion and Responsiveness

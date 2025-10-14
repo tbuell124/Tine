@@ -1,8 +1,8 @@
 import React from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { useTuner } from "@state/TunerStateContext";
-import { DEG_PER_CENT, MAX_DISPLAY_DEG } from "@utils/music";
+import { DEG_PER_CENT, MAX_DISPLAY_DEG, midiToEnharmonicNames } from "@utils/music";
 import stepSpring from "@utils/spring";
 import { InnerWheel } from "./InnerWheel";
 import { OuterWheel } from "./OuterWheel";
@@ -177,6 +177,54 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
 
   const innerRotation = springRef.current.angle;
 
+  const noteLabel = React.useMemo(() => {
+    if (pitch.midi === null) {
+      return "—";
+    }
+
+    const enharmonic = midiToEnharmonicNames(pitch.midi);
+
+    const parseNote = (note: string) => {
+      const match = note.match(/^([A-G])(#|b)?(\d+)$/);
+      if (!match) {
+        return { stem: note, octave: "" };
+      }
+
+      const [, letter, accidental, octave] = match;
+      const accidentalSymbol = accidental === "#" ? "♯" : accidental === "b" ? "♭" : "";
+
+      return {
+        stem: `${letter}${accidentalSymbol}`,
+        octave,
+      };
+    };
+
+    const sharp = parseNote(enharmonic.sharp);
+    const flat = parseNote(enharmonic.flat);
+
+    if (sharp.stem === flat.stem && sharp.octave === flat.octave) {
+      return `${sharp.stem}${sharp.octave}`;
+    }
+
+    if (sharp.octave === flat.octave) {
+      return `${sharp.stem}/${flat.stem}${flat.octave}`;
+    }
+
+    return `${sharp.stem}${sharp.octave}/${flat.stem}${flat.octave}`;
+  }, [pitch.midi]);
+
+  const centsLabel = React.useMemo(() => {
+    if (!Number.isFinite(pitch.cents)) {
+      return "0¢";
+    }
+
+    const rounded =
+      Math.abs(pitch.cents) < 10 ? pitch.cents.toFixed(1) : Math.round(pitch.cents).toString();
+    const prefix = pitch.cents > 0 ? "+" : pitch.cents < 0 ? "−" : "";
+    const magnitude = rounded.replace(/^[-+]/, "");
+    return `${prefix}${magnitude}¢`;
+  }, [pitch.cents]);
+
   const locked = React.useMemo(() => {
     if (pitch.midi === null) {
       return false;
@@ -195,6 +243,20 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <IndexIndicator size={size} tintColor={indicatorTint} locked={locked} />
       </View>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.hudContainer}>
+          <View style={styles.hudContent}>
+            <Text style={styles.noteLabel} accessibilityRole="text">
+              {noteLabel}
+            </Text>
+            {settings.manualMode ? null : (
+              <Text style={styles.centsLabel} accessibilityRole="text">
+                {centsLabel}
+              </Text>
+            )}
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
@@ -207,6 +269,35 @@ const styles = StyleSheet.create({
   centerContent: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  hudContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingBottom: 24,
+  },
+  hudContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(15, 23, 42, 0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.6)",
+  },
+  noteLabel: {
+    color: "#f8fafc",
+    fontSize: 24,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+  centsLabel: {
+    marginTop: 4,
+    color: "#cbd5f5",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    letterSpacing: 0.25,
   },
 });
 

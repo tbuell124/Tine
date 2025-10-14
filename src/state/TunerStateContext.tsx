@@ -609,6 +609,12 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   );
 };
 
+export const __testing = {
+  tunerReducer,
+  initialState,
+  normaliseSettingsPayload,
+};
+
 /**
  * Convenience hook that exposes the current tuner state object.
  */

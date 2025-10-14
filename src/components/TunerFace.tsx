@@ -88,14 +88,14 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   showDetentPegs = true,
 }) => {
   const {
-    state: { angles, spring, settings, pitch },
+    state: { angles, spring, settings, pitch, signal },
     actions,
   } = useTuner();
 
-  const latestStateRef = React.useRef({ angles, pitch, settings });
+  const latestStateRef = React.useRef({ angles, pitch, settings, signal });
   React.useEffect(() => {
-    latestStateRef.current = { angles, pitch, settings };
-  }, [angles, pitch, settings]);
+    latestStateRef.current = { angles, pitch, settings, signal };
+  }, [angles, pitch, settings, signal]);
 
   const outerRotationShared = useSharedValue(angles.outer);
   const manualAccumulatedRotation = useSharedValue(angles.outer);
@@ -130,11 +130,6 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   );
 
   const outerRotation = React.useMemo(() => degToRad(angles.outer), [angles.outer]);
-  const targetInnerRadians = React.useMemo(
-    () => degToRad(Math.max(-MAX_DISPLAY_DEG, Math.min(MAX_DISPLAY_DEG, angles.inner))),
-    [angles.inner],
-  );
-
   const handleManualBegin = React.useCallback(() => {
     const { angles: latestAngles, pitch: latestPitch } = latestStateRef.current;
     manualStartRotationRef.current = latestAngles.outer;
@@ -256,20 +251,12 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
 
   const detentTrackerRef = React.useRef<number | null>(null);
 
-  // Whenever the coarse angle target changes, update the spring's target.
-  React.useEffect(() => {
-    const current = springRef.current;
-    if (Math.abs(current.targetAngle - targetInnerRadians) > EPSILON) {
-      springRef.current = { ...current, targetAngle: targetInnerRadians };
-      actions.setSpring({ targetAngle: targetInnerRadians });
-    }
-  }, [actions, targetInnerRadians]);
-
   // Maintain a requestAnimationFrame loop that advances the critically damped spring.
   React.useEffect(() => {
     let isMounted = true;
     let frame: number;
     let lastTimestamp: number | null = null;
+    const idleMotionRef = { origin: null as number | null };
 
     const tick = (timestamp: number) => {
       if (!isMounted) {
@@ -284,6 +271,35 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
 
       const deltaTime = (timestamp - lastTimestamp) / 1000;
       lastTimestamp = timestamp;
+
+      const snapshot = latestStateRef.current;
+      const baseInner = Math.max(-MAX_DISPLAY_DEG, Math.min(MAX_DISPLAY_DEG, snapshot.angles.inner));
+      let targetInner = baseInner;
+
+      if (snapshot.signal.phase === "listening" && !snapshot.settings.manualMode) {
+        if (idleMotionRef.origin === null) {
+          idleMotionRef.origin = timestamp;
+        }
+
+        const elapsed = ((timestamp - idleMotionRef.origin) / 1000) % 1000;
+        const waveA = Math.sin(elapsed * 1.2);
+        const waveB = Math.sin(elapsed * 0.75 + 1.1);
+        const microDegrees = (waveA * 0.6 + waveB * 0.4) * 1.8;
+        targetInner = Math.max(
+          -MAX_DISPLAY_DEG,
+          Math.min(MAX_DISPLAY_DEG, baseInner + microDegrees),
+        );
+      } else {
+        idleMotionRef.origin = null;
+      }
+
+      const desiredTarget = degToRad(targetInner);
+      const currentSpring = springRef.current;
+
+      if (Math.abs(currentSpring.targetAngle - desiredTarget) > EPSILON) {
+        springRef.current = { ...currentSpring, targetAngle: desiredTarget };
+        actions.setSpring({ targetAngle: desiredTarget });
+      }
 
       const { angle, velocity, targetAngle } = springRef.current;
       const nextState = stepSpring(angle, targetAngle, velocity, deltaTime);

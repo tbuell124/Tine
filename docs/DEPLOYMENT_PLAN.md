@@ -2,6 +2,24 @@
 
 This document captures the end-to-end process for delivering the tuner to the Apple App Store and Google Play Store. It assumes a React Native + Skia implementation with native audio bridges, and it prioritizes low-latency audio performance on physical devices.
 
+## 0. First-time deployer checklist
+
+If you are brand new to mobile releases, start here before diving into the deeper automation sections.
+
+1. **Create developer accounts.** Enroll in the [Apple Developer Program](https://developer.apple.com/programs/) and register for the [Google Play Console](https://play.google.com/console/about/).
+2. **Install the Expo CLI** globally (`npm install --global expo-cli`) and sign in (`expo login`). A free Expo account is adequate for the initial release.
+3. **Fill in `app.json`.** Update the `name`, `slug`, `ios.bundleIdentifier`, and `android.package` fields so they match the identifiers you configured in the developer portals.
+4. **Run the quality gates locally.** Execute `npm run lint`, `npm run test`, and `npm run typecheck` to ensure CI will pass.
+5. **Build release artifacts with Expo Application Services (EAS).**
+   - iOS: `npx expo build:ios --type archive`
+   - Android: `npx expo build:android --type app-bundle`
+   Follow the prompts to generate or upload signing certificates. Expo securely stores them for future builds.
+6. **Distribute the builds for human testing.** Upload the generated `.ipa` to TestFlight and the `.aab` to a closed testing track in the Play Console.
+7. **Collect and resolve feedback.** Verify microphone permissions, tuning lock accuracy, and UI responsiveness on multiple devices.
+8. **Submit to the stores.** Complete metadata, privacy questionnaires, and pricing settings in both store portals. Monitor review status daily.
+
+Once you are comfortable with the manual process, continue reading for the automated pipeline that keeps releases repeatable.
+
 ## 1. Environments & Tooling
 
 | Layer | Purpose | Tooling |

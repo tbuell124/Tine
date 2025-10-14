@@ -30,29 +30,47 @@ Two Wheels, One Alignment Moment is a precision tuner crafted for React Native +
 
 ## Quick start
 
-Prerequisites:
+The steps below assume you have never set up a React Native or Expo project before. If you already have a working environment you can skim for the commands in **bold**.
 
-- Node.js ≥ 18
-- Yarn 1.x **or** npm 8+
-- Xcode 15+ with command line tools (macOS)
-- Android Studio (latest stable) with SDK Platform 34, NDK 26, and an Android 13+ emulator image
-- Watchman (macOS) for faster file watching
+### 1. Install the required tools
 
-Clone and run:
+1. **Install Node.js 18 or newer** from [nodejs.org](https://nodejs.org/) (the “LTS” installer is fine). Accept the defaults and restart your terminal when prompted.
+2. **Install Git** if it is not already available (`git --version` should print a version number). Use [git-scm.com](https://git-scm.com/downloads) for macOS/Windows installers.
+3. **Install a package manager**. npm ships with Node, but many developers prefer Yarn. Either is fine; this guide uses npm.
+4. **macOS only:** install [Watchman](https://facebook.github.io/watchman/docs/install) (`brew install watchman`) to improve file-watching performance.
+5. **iOS builds:** install Xcode 15 or newer from the Mac App Store and launch it once to accept the license.
+6. **Android builds:** install Android Studio (latest stable). During the first launch select the Android SDK Platform 34, Android SDK Build-Tools 34, and NDK 26. Enable the “Android Virtual Device” component if you plan to use an emulator.
+
+### 2. Clone the project and install dependencies
 
 ```bash
-# Install dependencies
-npm install
+git clone https://github.com/<your-org>/two-wheels-one-alignment-moment.git
+cd two-wheels-one-alignment-moment
 
-# Start the Expo development server
+# Install JavaScript dependencies (creates node_modules/)
+npm install
+```
+
+> **Troubleshooting:** If `npm install` fails with a permissions error, retry the command in a new terminal window or consult the [npm permissions guide](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
+
+### 3. Start the Expo development server
+
+```bash
+# Launch Expo and Metro bundler in interactive mode
 npm run start
 ```
 
-Follow the on-screen Expo prompts to open the app on:
+Expo will open a browser window showing a QR code and a command menu. Leave this terminal running while you develop.
 
-- **iOS** – press `i` to launch the iOS simulator or scan the QR code in Expo Go.
-- **Android** – press `a` to launch the Android emulator or use Expo Go.
-- **Web** – press `w` to open the web preview (visual fidelity only; audio capture is mobile-only).
+### 4. Open the app on your preferred platform
+
+- **iOS simulator (macOS only):** Press `i` in the terminal window running Expo. The iOS simulator will boot and install the app automatically.
+- **Physical iPhone:** Install the **Expo Go** app from the App Store, sign in with a free Expo account, then scan the QR code displayed in the browser.
+- **Android emulator:** Press `a` to launch the default emulator (make sure one is configured in Android Studio first).
+- **Physical Android phone:** Install **Expo Go** from the Play Store, sign in, and either scan the QR code or type the development server URL shown in the browser.
+- **Web preview:** Press `w` to open a browser-based preview. Rendering works, but microphone capture is limited to mobile devices.
+
+Once the app loads you can edit files in `src/` and the changes will hot-reload automatically.
 
 ## Project structure
 
@@ -88,6 +106,26 @@ app/
 - **Visual regression (optional)** – Integrate [`@shopify/react-native-skia` snapshot testing](https://shopify.github.io/react-native-skia/docs/guides/testing/) to validate rendering changes.
 
 ## Deployment overview
+
+### Beginner-friendly release checklist
+
+If this is your first time shipping an Expo/React Native application, walk through the checklist below. Each step links out to the relevant Expo or platform documentation for deeper dives.
+
+1. **Create the necessary developer accounts.**
+   - Apple: join the [Apple Developer Program](https://developer.apple.com/programs/) with an Apple ID ($99/year).
+   - Google: create a [Google Play Console](https://play.google.com/console/about/) developer account ($25 one-time).
+2. **Install the Expo CLI globally** for release tooling: `npm install --global expo-cli`.
+3. **Sign in to Expo** in your terminal: `expo login`. Free accounts are sufficient for test builds.
+4. **Configure the app metadata** in `app.json` (name, slug, bundle identifiers). The defaults work for local testing; update them before submitting to stores.
+5. **Generate native builds** using Expo Application Services (recommended for beginners):
+   - iOS: `npx expo build:ios --type archive` (prompts you to create or upload signing certificates).
+   - Android: `npx expo build:android --type app-bundle`.
+   Expo hosts the signed artifacts and provides download links when the build finishes.
+6. **Test the resulting builds** on physical devices before submitting. Install the `.ipa` via TestFlight and the `.aab` via the Play Console internal testing track.
+7. **Prepare store listing assets** (screenshots, descriptions, privacy statements). Use the in-app lock animation and tuning wheel screens for visuals.
+8. **Submit for review** following the platform-specific steps below. Keep track of review feedback in your team’s project tracker.
+
+The rest of this section provides additional detail for experienced teams or anyone migrating to custom CI/CD.
 
 High-level guidance for shipping to the Apple App Store and Google Play Store:
 

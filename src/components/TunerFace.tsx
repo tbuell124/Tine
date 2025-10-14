@@ -1,8 +1,18 @@
 import React from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import Animated, { runOnJS, useSharedValue } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { useTuner } from "@state/TunerStateContext";
-import { DEG_PER_CENT, MAX_DISPLAY_DEG, midiToEnharmonicNames } from "@utils/music";
+import {
+  DEG_PER_CENT,
+  MAX_DISPLAY_DEG,
+  NOTE_STEP_DEG,
+  midiToEnharmonicNames,
+  midiToNoteName,
+  MIDI_MAX,
+  MIDI_MIN,
+} from "@utils/music";
 import stepSpring from "@utils/spring";
 import { InnerWheel } from "./InnerWheel";
 import { OuterWheel } from "./OuterWheel";
@@ -13,9 +23,22 @@ const INNER_WHEEL_RATIO = 220 / 320; // Mirrors the defaults declared inside the
 const DETENT_CENTS = 5;
 const DETENT_STEP_DEGREES = DETENT_CENTS * DEG_PER_CENT;
 const EPSILON = 1e-4;
+const DEFAULT_A4_MIDI = 69;
+const SENSITIVITY_STATES = ["gentle", "standard", "aggressive"] as const;
 
 const degToRad = (degrees: number): number => (degrees * Math.PI) / 180;
 const radToDeg = (radians: number): number => (radians * 180) / Math.PI;
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+const normaliseRadians = (value: number): number => {
+  const mod = value % (Math.PI * 2);
+  if (mod > Math.PI) {
+    return mod - Math.PI * 2;
+  }
+  if (mod < -Math.PI) {
+    return mod + Math.PI * 2;
+  }
+  return mod;
+};
 
 export type DetentDirection = "sharp" | "flat";
 
@@ -68,6 +91,38 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     actions,
   } = useTuner();
 
+  const latestStateRef = React.useRef({ angles, pitch, settings });
+  React.useEffect(() => {
+    latestStateRef.current = { angles, pitch, settings };
+  }, [angles, pitch, settings]);
+
+  const outerRotationShared = useSharedValue(angles.outer);
+  const manualAccumulatedRotation = useSharedValue(angles.outer);
+  const manualPreviousAngle = useSharedValue(0);
+
+  React.useEffect(() => {
+    outerRotationShared.value = angles.outer;
+    manualAccumulatedRotation.value = angles.outer;
+  }, [angles.outer, outerRotationShared, manualAccumulatedRotation]);
+
+  const manualStartRotationRef = React.useRef(angles.outer);
+  const manualStartMidiRef = React.useRef(pitch.midi ?? DEFAULT_A4_MIDI);
+  const lastManualRotationRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (!settings.manualMode) {
+      manualStartRotationRef.current = angles.outer;
+      manualStartMidiRef.current = pitch.midi ?? DEFAULT_A4_MIDI;
+      lastManualRotationRef.current = angles.outer;
+    }
+  }, [angles.outer, pitch.midi, settings.manualMode]);
+
+  const pinchStartModeRef = React.useRef(settings.sensitivityMode);
+  const pinchActiveModeRef = React.useRef(settings.sensitivityMode);
+  React.useEffect(() => {
+    pinchActiveModeRef.current = settings.sensitivityMode;
+  }, [settings.sensitivityMode]);
+
   const containerStyle = React.useMemo(
     () => [styles.container, { width: size, height: size }, style],
     [size, style],
@@ -77,6 +132,115 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   const targetInnerRadians = React.useMemo(
     () => degToRad(Math.max(-MAX_DISPLAY_DEG, Math.min(MAX_DISPLAY_DEG, angles.inner))),
     [angles.inner],
+  );
+
+  const handleManualBegin = React.useCallback(() => {
+    const { angles: latestAngles, pitch: latestPitch } = latestStateRef.current;
+    manualStartRotationRef.current = latestAngles.outer;
+    manualStartMidiRef.current = latestPitch.midi ?? DEFAULT_A4_MIDI;
+    lastManualRotationRef.current = latestAngles.outer;
+    actions.updateSettings({ manualMode: true });
+  }, [actions]);
+
+  const handleManualRotate = React.useCallback(
+    (rotation: number) => {
+      const previous = lastManualRotationRef.current;
+      if (previous !== null && Math.abs(rotation - previous) < 0.2) {
+        return;
+      }
+
+      lastManualRotationRef.current = rotation;
+      actions.setAngles({ outer: rotation });
+
+      const baseMidi = manualStartMidiRef.current;
+      const rotationDelta = rotation - manualStartRotationRef.current;
+      const semitoneOffset = Math.round(rotationDelta / NOTE_STEP_DEG);
+      const targetMidi = clamp(baseMidi + semitoneOffset, MIDI_MIN, MIDI_MAX);
+
+      actions.setPitch({ midi: targetMidi, cents: 0 });
+    },
+    [actions],
+  );
+
+  const handleManualEnd = React.useCallback(() => {
+    const { angles: latestAngles, pitch: latestPitch } = latestStateRef.current;
+    manualStartRotationRef.current = latestAngles.outer;
+    manualStartMidiRef.current = latestPitch.midi ?? DEFAULT_A4_MIDI;
+    lastManualRotationRef.current = latestAngles.outer;
+  }, []);
+
+  const handlePinchBegin = React.useCallback(() => {
+    pinchStartModeRef.current = pinchActiveModeRef.current;
+  }, []);
+
+  const handlePinchUpdate = React.useCallback(
+    (scale: number) => {
+      const startMode = pinchStartModeRef.current;
+      let delta = 0;
+      if (scale > 1.12) {
+        delta = 1;
+      } else if (scale < 0.9) {
+        delta = -1;
+      }
+
+      if (delta === 0) {
+        return;
+      }
+
+      const currentMode = pinchActiveModeRef.current;
+      const startIndex = SENSITIVITY_STATES.indexOf(startMode);
+      const nextIndex = clamp(startIndex + delta, 0, SENSITIVITY_STATES.length - 1);
+      const nextMode = SENSITIVITY_STATES[nextIndex];
+
+      if (nextMode !== currentMode) {
+        pinchActiveModeRef.current = nextMode;
+        actions.updateSettings({ sensitivityMode: nextMode });
+      }
+    },
+    [actions],
+  );
+
+  const outerDragGesture = React.useMemo(() => {
+    const center = size / 2;
+    return Gesture.Pan()
+      .maxPointers(1)
+      .onBegin((event) => {
+        const angle = Math.atan2(event.y - center, event.x - center);
+        manualPreviousAngle.value = angle;
+        manualAccumulatedRotation.value = outerRotationShared.value;
+        runOnJS(handleManualBegin)();
+      })
+      .onUpdate((event) => {
+        const angle = Math.atan2(event.y - center, event.x - center);
+        const delta = normaliseRadians(angle - manualPreviousAngle.value);
+        manualAccumulatedRotation.value += radToDeg(delta);
+        manualPreviousAngle.value = angle;
+        runOnJS(handleManualRotate)(manualAccumulatedRotation.value);
+      })
+      .onFinalize(() => {
+        manualAccumulatedRotation.value = outerRotationShared.value;
+        runOnJS(handleManualEnd)();
+      });
+  }, [
+    size,
+    manualAccumulatedRotation,
+    manualPreviousAngle,
+    outerRotationShared,
+    handleManualBegin,
+    handleManualRotate,
+    handleManualEnd,
+  ]);
+
+  const innerPinchGesture = React.useMemo(
+    () =>
+      Gesture.Pinch()
+        .onBegin(() => {
+          runOnJS(handlePinchBegin)();
+        })
+        .onUpdate((event) => {
+          runOnJS(handlePinchUpdate)(event.scale);
+        }),
+    [handlePinchBegin, handlePinchUpdate],
   );
 
   const hapticsRef = React.useRef(onDetent);
@@ -225,6 +389,18 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     return `${prefix}${magnitude}¢`;
   }, [pitch.cents]);
 
+  const manualNoteLabel = React.useMemo(() => {
+    if (pitch.noteName) {
+      return pitch.noteName;
+    }
+
+    if (pitch.midi !== null) {
+      return midiToNoteName(pitch.midi);
+    }
+
+    return midiToNoteName(DEFAULT_A4_MIDI);
+  }, [pitch.noteName, pitch.midi]);
+
   const locked = React.useMemo(() => {
     if (pitch.midi === null) {
       return false;
@@ -236,9 +412,21 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
 
   return (
     <View style={containerStyle}>
-      <OuterWheel size={size} rotation={outerRotation} />
+      <GestureDetector gesture={outerDragGesture}>
+        <Animated.View style={{ width: size, height: size }}>
+          <OuterWheel size={size} rotation={outerRotation} />
+        </Animated.View>
+      </GestureDetector>
       <View style={[StyleSheet.absoluteFill, styles.centerContent]}>
-        <InnerWheel size={innerSize} rotation={innerRotation} showDetentPegs={showDetentPegs} />
+        <GestureDetector gesture={innerPinchGesture}>
+          <Animated.View style={{ width: innerSize, height: innerSize }}>
+            <InnerWheel
+              size={innerSize}
+              rotation={innerRotation}
+              showDetentPegs={showDetentPegs}
+            />
+          </Animated.View>
+        </GestureDetector>
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <IndexIndicator size={size} tintColor={indicatorTint} locked={locked} />
@@ -246,6 +434,11 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <View style={styles.hudContainer}>
           <View style={styles.hudContent}>
+            {settings.manualMode ? (
+              <View style={styles.manualPill} accessibilityRole="text">
+                <Text style={styles.manualPillText}>{`Manual ${manualNoteLabel}`}</Text>
+              </View>
+            ) : null}
             <Text style={styles.noteLabel} accessibilityRole="text">
               {noteLabel}
             </Text>
@@ -283,6 +476,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15, 23, 42, 0.92)",
     borderWidth: 1,
     borderColor: "rgba(148, 163, 184, 0.6)",
+    alignItems: "center",
+  },
+  manualPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(30, 58, 138, 0.65)",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.35)",
+    marginBottom: 6,
+  },
+  manualPillText: {
+    color: "#dbeafe",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.25,
   },
   noteLabel: {
     color: "#f8fafc",

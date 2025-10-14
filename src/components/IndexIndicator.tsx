@@ -8,8 +8,12 @@ import {
   PaintStyle,
   Path,
   Skia,
+  StrokeCap,
+  StrokeJoin,
+  Text,
   TileMode,
   vec,
+  type SkFont,
   type SkPaint,
   type SkPath,
 } from "@shopify/react-native-skia";
@@ -24,6 +28,14 @@ export type IndexIndicatorProps = {
 };
 
 const DEFAULT_TINT = "#f4d35e";
+const LOCK_LABEL = "IN TUNE";
+
+type BadgeLayout = {
+  path: SkPath;
+  rect: { x: number; y: number; width: number; height: number };
+  textX: number;
+  textY: number;
+};
 
 /**
  * Mixes the provided tint toward either white or black to generate shading colours.
@@ -77,29 +89,88 @@ const buildGlowPaint = (radius: number, tintColor: string): SkPaint => {
   return paint;
 };
 
-const buildPipPath = (center: number, outerRadius: number, size: number): SkPath => {
-  const pipHeight = size * 0.16;
-  const pipWidth = size * 0.12;
-  const startY = center - outerRadius - pipHeight * 0.04;
-
-  const path = Skia.Path.Make();
-  path.moveTo(center, startY);
-  path.quadTo(center + pipWidth / 2, startY + pipHeight * 0.45, center, startY + pipHeight);
-  path.quadTo(center - pipWidth / 2, startY + pipHeight * 0.45, center, startY);
-  path.close();
-  return path;
+const buildBadgeFont = (size: number): SkFont => {
+  const typefaceFactory = (Skia.Typeface as { MakeDefault?: () => unknown }).MakeDefault;
+  const typeface = typeof typefaceFactory === "function" ? typefaceFactory() : undefined;
+  return Skia.Font(typeface, size);
 };
 
-const buildPipPaint = (tintColor: string): SkPaint => {
+const buildLockRingPaint = (
+  center: number,
+  outerRadius: number,
+  tintColor: string,
+): SkPaint => {
+  const paint = Skia.Paint();
+  const shader = Skia.Shader.MakeSweepGradient(
+    vec(center, center),
+    [
+      mixTint(tintColor, true, 0.85),
+      mixTint(tintColor, true, 0.35),
+      mixTint(tintColor, false, 0.05),
+      mixTint(tintColor, true, 0.85),
+    ].map((color) => Skia.Color(color)),
+    [0, 0.35, 0.7, 1],
+    TileMode.Clamp,
+  );
+  paint.setShader(shader);
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(outerRadius * 0.12);
+  paint.setStrokeCap(StrokeCap.Round);
+  paint.setStrokeJoin(StrokeJoin.Round);
+  paint.setAntiAlias(true);
+  return paint;
+};
+
+const buildBadgeLayout = (
+  center: number,
+  outerRadius: number,
+  size: number,
+  font: SkFont,
+): BadgeLayout => {
+  const width = size * 0.44;
+  const height = size * 0.16;
+  const top = center + outerRadius * 0.08;
+  const left = center - width / 2;
+  const rect = { x: left, y: top, width, height };
+  const path = Skia.Path.Make();
+  path.addRoundRect(
+    Skia.XYWHRect(rect.x, rect.y, rect.width, rect.height),
+    height / 2.6,
+    height / 2.6,
+  );
+
+  const metrics = font.measureText(LOCK_LABEL);
+  const textWidth = metrics?.width ?? 0;
+  const textHeight = font.getSize();
+  const textX = center - textWidth / 2;
+  const textY = rect.y + rect.height / 2 + textHeight / 3;
+
+  return { path, rect, textX, textY };
+};
+
+const buildBadgeFillPaint = (tintColor: string, layout: BadgeLayout): SkPaint => {
   const paint = Skia.Paint();
   const shader = Skia.Shader.MakeLinearGradient(
-    vec(0, 0),
-    vec(0, 1),
-    [mixTint(tintColor, true, 0.6), mixTint(tintColor, false, 0.2)].map((color) => Skia.Color(color)),
+    vec(layout.rect.x, layout.rect.y),
+    vec(layout.rect.x, layout.rect.y + layout.rect.height),
+    [mixTint(tintColor, true, 0.7), mixTint(tintColor, false, 0.05)].map((color) =>
+      Skia.Color(color),
+    ),
     [0, 1],
     TileMode.Clamp,
   );
   paint.setShader(shader);
+  paint.setAlphaf(0.92);
+  paint.setAntiAlias(true);
+  return paint;
+};
+
+const buildBadgeStrokePaint = (tintColor: string, layout: BadgeLayout): SkPaint => {
+  const paint = Skia.Paint();
+  paint.setColor(Skia.Color(mixTint(tintColor, false, 0.2)));
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(Math.max(layout.rect.height * 0.08, 1.5));
+  paint.setAntiAlias(true);
   return paint;
 };
 
@@ -163,11 +234,25 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
     [locked, outerRadius, tintColor],
   );
 
-  const pipPath = useMemo(
-    () => buildPipPath(center, outerRadius, size),
-    [center, outerRadius, size],
+  const lockRingRadius = outerRadius * 0.78;
+  const lockRingPaint = useMemo(
+    () => (locked ? buildLockRingPaint(center, lockRingRadius, tintColor) : undefined),
+    [center, lockRingRadius, locked, tintColor],
   );
-  const pipPaint = useMemo(() => buildPipPaint(tintColor), [tintColor]);
+
+  const badgeFont = useMemo(() => buildBadgeFont(size * 0.11), [size]);
+  const badgeLayout = useMemo(
+    () => buildBadgeLayout(center, outerRadius, size, badgeFont),
+    [badgeFont, center, outerRadius, size],
+  );
+  const badgeFillPaint = useMemo(
+    () => (locked ? buildBadgeFillPaint(tintColor, badgeLayout) : undefined),
+    [badgeLayout, locked, tintColor],
+  );
+  const badgeStrokePaint = useMemo(
+    () => (locked ? buildBadgeStrokePaint(tintColor, badgeLayout) : undefined),
+    [badgeLayout, locked, tintColor],
+  );
 
   const highlightPath = useMemo(
     () => buildHighlightPath(center, outerRadius),
@@ -192,22 +277,30 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
         {/* Glass reflection overlay */}
         <Path path={highlightPath} paint={highlightPaint} />
 
-        {/* Fixed twelve o'clock pip */}
-        <Path path={pipPath} paint={pipPaint} />
-        <Circle
-          cx={center}
-          cy={center - outerRadius + size * 0.055}
-          r={size * 0.022}
-          color={mixTint(tintColor, true, 0.55)}
-        />
-        <Circle
-          cx={center}
-          cy={center - outerRadius + size * 0.055}
-          r={size * 0.022}
-          color="rgba(0, 0, 0, 0.25)"
-          style="stroke"
-          strokeWidth={size * 0.004}
-        />
+        {locked && lockRingPaint ? (
+          <Circle cx={center} cy={center} r={lockRingRadius} paint={lockRingPaint} />
+        ) : null}
+
+        {locked && badgeFillPaint && badgeStrokePaint ? (
+          <Group>
+            <Path path={badgeLayout.path} paint={badgeFillPaint} />
+            <Path path={badgeLayout.path} paint={badgeStrokePaint} />
+            <Text
+              x={badgeLayout.textX + size * 0.002}
+              y={badgeLayout.textY + size * 0.002}
+              text={LOCK_LABEL}
+              font={badgeFont}
+              color="rgba(255, 255, 255, 0.55)"
+            />
+            <Text
+              x={badgeLayout.textX}
+              y={badgeLayout.textY}
+              text={LOCK_LABEL}
+              font={badgeFont}
+              color="rgba(15, 23, 42, 0.95)"
+            />
+          </Group>
+        ) : null}
       </Group>
     </Canvas>
   );

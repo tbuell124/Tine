@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { InteractiveOrb } from '@components/InteractiveOrb';
+import { SettingsModal } from '@components/SettingsModal';
 import { TunerProvider } from '@state/TunerStateContext';
 
 export default function App(): JSX.Element {
@@ -12,6 +13,7 @@ export default function App(): JSX.Element {
       <TunerProvider>
         <View style={styles.container}>
           <StatusBar style="dark" />
+          <SettingsModal />
           <InteractiveOrb />
         </View>
       </TunerProvider>

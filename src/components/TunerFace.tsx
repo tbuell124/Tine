@@ -25,7 +25,7 @@ const DETENT_CENTS = 5;
 const DETENT_STEP_DEGREES = DETENT_CENTS * DEG_PER_CENT;
 const EPSILON = 1e-4;
 const DEFAULT_A4_MIDI = 69;
-const SENSITIVITY_STATES = ["gentle", "standard", "aggressive"] as const;
+const SENSITIVITY_OPTIONS = [25, 50, 100] as const;
 
 const degToRad = (degrees: number): number => (degrees * Math.PI) / 180;
 const radToDeg = (radians: number): number => (radians * 180) / Math.PI;
@@ -118,11 +118,11 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     }
   }, [angles.outer, pitch.midi, settings.manualMode]);
 
-  const pinchStartModeRef = React.useRef(settings.sensitivityMode);
-  const pinchActiveModeRef = React.useRef(settings.sensitivityMode);
+  const pinchStartRangeRef = React.useRef(settings.sensitivityRange);
+  const pinchActiveRangeRef = React.useRef(settings.sensitivityRange);
   React.useEffect(() => {
-    pinchActiveModeRef.current = settings.sensitivityMode;
-  }, [settings.sensitivityMode]);
+    pinchActiveRangeRef.current = settings.sensitivityRange;
+  }, [settings.sensitivityRange]);
 
   const containerStyle = React.useMemo(
     () => [styles.container, { width: size, height: size }, style],
@@ -171,12 +171,12 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   }, []);
 
   const handlePinchBegin = React.useCallback(() => {
-    pinchStartModeRef.current = pinchActiveModeRef.current;
+    pinchStartRangeRef.current = pinchActiveRangeRef.current;
   }, []);
 
   const handlePinchUpdate = React.useCallback(
     (scale: number) => {
-      const startMode = pinchStartModeRef.current;
+      const startRange = pinchStartRangeRef.current;
       let delta = 0;
       if (scale > 1.12) {
         delta = 1;
@@ -188,14 +188,14 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
         return;
       }
 
-      const currentMode = pinchActiveModeRef.current;
-      const startIndex = SENSITIVITY_STATES.indexOf(startMode);
-      const nextIndex = clamp(startIndex + delta, 0, SENSITIVITY_STATES.length - 1);
-      const nextMode = SENSITIVITY_STATES[nextIndex];
+      const currentRange = pinchActiveRangeRef.current;
+      const startIndex = SENSITIVITY_OPTIONS.indexOf(startRange);
+      const nextIndex = clamp(startIndex + delta, 0, SENSITIVITY_OPTIONS.length - 1);
+      const nextRange = SENSITIVITY_OPTIONS[nextIndex];
 
-      if (nextMode !== currentMode) {
-        pinchActiveModeRef.current = nextMode;
-        actions.updateSettings({ sensitivityMode: nextMode });
+      if (nextRange !== currentRange) {
+        pinchActiveRangeRef.current = nextRange;
+        actions.updateSettings({ sensitivityRange: nextRange });
       }
     },
     [actions],
@@ -346,6 +346,8 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   const { locked, accentColor: indicatorAccent, status: tuningStatus } = usePitchLock({
     cents: pitch.cents,
     midi: pitch.midi,
+    thresholdCents: settings.lockThreshold,
+    dwellTimeMs: settings.lockDwellTime * 1000,
   });
 
   const noteLabel = React.useMemo(() => {

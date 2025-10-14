@@ -4,8 +4,8 @@
 
 // Tunable constants derived from design requirements. Keeping them isolated makes
 // it easier to tweak the "feel" without touching the integration logic.
-const DAMPING_RATIO = 0.92; // Approximately critical damping for a responsive feel.
-const ANGULAR_FREQUENCY = 12; // Natural frequency (rad/s) controlling stiffness.
+export const SPRING_DAMPING_RATIO = 0.92; // Approximately critical damping for a responsive feel.
+export const SPRING_ANGULAR_FREQUENCY = 12; // Natural frequency (rad/s) controlling stiffness.
 
 /**
  * Represents the state of the spring, consisting of the current angle and angular velocity.
@@ -64,8 +64,8 @@ export function stepSpring(
   const displacement = normalizeAngle(currentAngle - targetAngle);
 
   // Compute acceleration based on the second-order ODE of a damped harmonic oscillator.
-  const stiffness = ANGULAR_FREQUENCY * ANGULAR_FREQUENCY;
-  const damping = 2 * DAMPING_RATIO * ANGULAR_FREQUENCY;
+  const stiffness = SPRING_ANGULAR_FREQUENCY * SPRING_ANGULAR_FREQUENCY;
+  const damping = 2 * SPRING_DAMPING_RATIO * SPRING_ANGULAR_FREQUENCY;
   const acceleration = -stiffness * displacement - damping * velocity;
 
   // Integrate velocity first (semi-implicit) for better energy behavior than explicit Euler.

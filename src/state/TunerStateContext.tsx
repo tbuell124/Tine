@@ -1,5 +1,9 @@
 import React from 'react';
 
+import { midiToNoteName } from '../utils/music';
+import type { NoteName } from '../utils/music';
+import type { SpringState } from '../utils/spring';
+
 /**
  * Describes the currently detected pitch along with any metadata that the UI
  * needs for display or downstream calculations.
@@ -7,7 +11,7 @@ import React from 'react';
 export interface PitchState {
   midi: number | null;
   cents: number;
-  noteName: string;
+  noteName: NoteName | null;
 }
 
 /**
@@ -15,17 +19,19 @@ export interface PitchState {
  * tuner UI.
  */
 export interface AngleState {
+  /** Outer wheel rotation in degrees representing coarse pitch class alignment. */
   outer: number;
+  /** Target inner wheel rotation in degrees representing ±50¢ detuning. */
   inner: number;
 }
 
 /**
- * Tracks the velocity of the primary spring animation so gesture handlers and
- * animations can stay in sync.
+ * Tracks the critically damped spring responsible for smoothing inner dial
+ * motion. All angles are stored in radians to align with the physics helper.
  */
-export interface SpringVelocityState {
-  current: number;
-  target: number;
+export interface SpringRuntimeState extends SpringState {
+  /** Target angle (radians) the spring should converge towards. */
+  targetAngle: number;
 }
 
 /**
@@ -43,30 +49,34 @@ export interface TunerSettings {
 export interface TunerState {
   pitch: PitchState;
   angles: AngleState;
-  springVelocity: SpringVelocityState;
+  /** Critically damped spring state controlling the smooth inner dial motion. */
+  spring: SpringRuntimeState;
   settings: TunerSettings;
 }
 
 type TunerAction =
   | { type: 'SET_PITCH'; payload: Partial<PitchState> }
   | { type: 'SET_ANGLES'; payload: Partial<AngleState> }
-  | { type: 'SET_SPRING_VELOCITY'; payload: Partial<SpringVelocityState> }
+  | { type: 'SET_SPRING'; payload: Partial<SpringRuntimeState> }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<TunerSettings> }
   | { type: 'RESET' };
 
+const DEFAULT_A4_MIDI = 69;
+
 const initialState: TunerState = {
   pitch: {
-    midi: null,
+    midi: DEFAULT_A4_MIDI,
     cents: 0,
-    noteName: 'A4'
+    noteName: midiToNoteName(DEFAULT_A4_MIDI)
   },
   angles: {
     outer: 0,
     inner: 0
   },
-  springVelocity: {
-    current: 0,
-    target: 0
+  spring: {
+    angle: 0,
+    velocity: 0,
+    targetAngle: 0
   },
   settings: {
     a4Calibration: 440,
@@ -82,20 +92,33 @@ const TunerDispatchContext = React.createContext<React.Dispatch<TunerAction> | u
 
 function tunerReducer(state: TunerState, action: TunerAction): TunerState {
   switch (action.type) {
-    case 'SET_PITCH':
+    case 'SET_PITCH': {
+      const nextPitch = { ...state.pitch, ...action.payload };
+
+      if (
+        action.payload.midi !== undefined &&
+        action.payload.noteName === undefined
+      ) {
+        nextPitch.noteName =
+          action.payload.midi === null
+            ? null
+            : midiToNoteName(action.payload.midi);
+      }
+
       return {
         ...state,
-        pitch: { ...state.pitch, ...action.payload }
+        pitch: nextPitch
       };
+    }
     case 'SET_ANGLES':
       return {
         ...state,
         angles: { ...state.angles, ...action.payload }
       };
-    case 'SET_SPRING_VELOCITY':
+    case 'SET_SPRING':
       return {
         ...state,
-        springVelocity: { ...state.springVelocity, ...action.payload }
+        spring: { ...state.spring, ...action.payload }
       };
     case 'UPDATE_SETTINGS':
       return {
@@ -103,7 +126,13 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
         settings: { ...state.settings, ...action.payload }
       };
     case 'RESET':
-      return initialState;
+      return {
+        ...initialState,
+        pitch: { ...initialState.pitch },
+        angles: { ...initialState.angles },
+        spring: { ...initialState.spring },
+        settings: { ...initialState.settings }
+      };
     default: {
       const exhaustiveCheck: never = action;
       throw new Error(`Unhandled action: ${JSON.stringify(exhaustiveCheck)}`);
@@ -154,8 +183,8 @@ export function useTunerActions() {
       setPitch: (pitch: Partial<PitchState>) => dispatch({ type: 'SET_PITCH', payload: pitch }),
       setAngles: (angles: Partial<AngleState>) =>
         dispatch({ type: 'SET_ANGLES', payload: angles }),
-      setSpringVelocity: (springVelocity: Partial<SpringVelocityState>) =>
-        dispatch({ type: 'SET_SPRING_VELOCITY', payload: springVelocity }),
+      setSpring: (spring: Partial<SpringRuntimeState>) =>
+        dispatch({ type: 'SET_SPRING', payload: spring }),
       updateSettings: (settings: Partial<TunerSettings>) =>
         dispatch({ type: 'UPDATE_SETTINGS', payload: settings }),
       reset: () => dispatch({ type: 'RESET' })

@@ -17,6 +17,10 @@ import {
   type SkPath,
 } from "@shopify/react-native-skia";
 
+import { useSpecularHighlight } from "@hooks/useSpecularHighlight";
+
+import { createSpecularHighlightPaint } from "./shaders/specularHighlight";
+
 export type InnerWheelProps = {
   /** Diameter of the wheel in logical pixels. */
   size?: number;
@@ -113,8 +117,28 @@ export const InnerWheel: React.FC<InnerWheelProps> = ({
   const labelRadius = size * 0.27;
   const diamondRadius = size * 0.4;
 
+  const specularHighlight = useSpecularHighlight(rotation, {
+    minWidth: 0.09,
+    maxWidth: 0.2,
+    minIntensity: 0.4,
+    maxIntensity: 0.9,
+    tiltReference: 0.65,
+  });
+
   const brushPaint = useMemo(() => buildSweepBrushPaint(center, outerRadius), [center, outerRadius]);
   const shadowPaint = useMemo(() => buildRadialShadowPaint(center, outerRadius), [center, outerRadius]);
+  const specularHighlightPaint = useMemo(() => {
+    const noiseScale = 9 + specularHighlight.tiltStrength * 6 + size / 90;
+    return createSpecularHighlightPaint({
+      center: [center, center],
+      innerRadius: innerRadius * 0.15,
+      outerRadius,
+      highlightAngle: specularHighlight.localAngle,
+      arcWidth: specularHighlight.width,
+      intensity: specularHighlight.intensity,
+      noiseScale,
+    });
+  }, [center, innerRadius, outerRadius, size, specularHighlight]);
   const outerChamferPaint = useMemo(() => buildChamferPaint("#ffffff2a", size * 0.01), [size]);
   const innerChamferPaint = useMemo(() => buildChamferPaint("#00000055", size * 0.012), [size]);
   const font = useMemo(() => buildFont(size * 0.07), [size]);
@@ -215,6 +239,10 @@ export const InnerWheel: React.FC<InnerWheelProps> = ({
             ))}
           </React.Fragment>
         ))}
+
+        {specularHighlightPaint ? (
+          <Circle cx={center} cy={center} r={outerRadius} paint={specularHighlightPaint} />
+        ) : null}
 
         <Circle cx={center} cy={center} r={outerRadius} paint={outerChamferPaint} />
         <Circle cx={center} cy={center} r={innerRadius} paint={innerChamferPaint} />

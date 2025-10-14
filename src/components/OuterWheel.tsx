@@ -17,6 +17,10 @@ import {
   type SkPath,
 } from "@shopify/react-native-skia";
 
+import { useSpecularHighlight } from "@hooks/useSpecularHighlight";
+
+import { createSpecularHighlightPaint } from "./shaders/specularHighlight";
+
 export type OuterWheelProps = {
   /**
    * Diameter of the wheel in logical pixels.
@@ -151,6 +155,13 @@ export const OuterWheel: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0
   const innerRadius = size * 0.35;
   const chamferInnerRadius = size * 0.33;
 
+  const specularHighlight = useSpecularHighlight(rotation, {
+    minWidth: 0.08,
+    maxWidth: 0.16,
+    minIntensity: 0.45,
+    maxIntensity: 1.05,
+  });
+
   const segmentPaths = useMemo(
     () => buildSegmentPaths(center, innerRadius, outerRadius),
     [center, innerRadius, outerRadius],
@@ -162,6 +173,19 @@ export const OuterWheel: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0
     () => buildRadialHighlightPaint(center, outerRadius),
     [center, outerRadius],
   );
+
+  const specularHighlightPaint = useMemo(() => {
+    const noiseScale = 10 + specularHighlight.tiltStrength * 8 + size / 80;
+    return createSpecularHighlightPaint({
+      center: [center, center],
+      innerRadius,
+      outerRadius,
+      highlightAngle: specularHighlight.localAngle,
+      arcWidth: specularHighlight.width,
+      intensity: specularHighlight.intensity,
+      noiseScale,
+    });
+  }, [center, innerRadius, outerRadius, size, specularHighlight]);
 
   const outerChamferPaint = useMemo(
     () => buildChamferPaint("#ffffff40", size * 0.01),
@@ -217,6 +241,10 @@ export const OuterWheel: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0
           const fillColor = `rgba(0, 0, 0, ${intensity})`;
           return <Path key={`segment-${index}`} path={path} color={fillColor} />;
         })}
+
+        {specularHighlightPaint ? (
+          <Circle cx={center} cy={center} r={outerRadius} paint={specularHighlightPaint} />
+        ) : null}
 
         <Circle cx={center} cy={center} r={outerRadius} paint={outerChamferPaint} />
         <Circle cx={center} cy={center} r={chamferInnerRadius} paint={innerChamferPaint} />

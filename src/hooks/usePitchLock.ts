@@ -1,0 +1,157 @@
+import React from "react";
+
+import { triggerSuccessLock } from "@utils/haptics";
+import { mixHexColors } from "@utils/color";
+
+const LOCK_THRESHOLD_CENTS = 2;
+const LOCK_RELEASE_THRESHOLD_CENTS = 4;
+const LOCK_DURATION_MS = 400;
+const MICRO_JITTER_INTERVAL_MS = 80;
+
+const EMERALD_BASE = "#059669";
+const EMERALD_LIGHT = "#34d399";
+const EMERALD_DARK = "#047857";
+
+export interface UsePitchLockOptions {
+  /** Current cents deviation reported by the tuner. */
+  cents: number;
+  /** MIDI number of the detected pitch. `null` indicates no reliable lock. */
+  midi: number | null;
+  /** Base tint to fall back to when the tuner is not locked. */
+  baseTint: string;
+}
+
+export interface UsePitchLockState {
+  /** Whether the tuner is currently considered locked. */
+  locked: boolean;
+  /** Tint colour that should be applied to the index indicator. */
+  indicatorTint: string;
+}
+
+const isFiniteCents = (value: number): boolean => Number.isFinite(value);
+
+/**
+ * Tracks whether the tuner should be considered "locked" by observing the cents
+ * value over time. When the signal stays within ±2¢ for 400ms we treat it as a
+ * lock, trigger a success haptic, and swap the indicator tint to an emerald
+ * finish. Unlocking introduces a small hysteresis to prevent rapid flicker.
+ */
+export const usePitchLock = ({ cents, midi, baseTint }: UsePitchLockOptions): UsePitchLockState => {
+  const [locked, setLocked] = React.useState(false);
+  const [microJitter, setMicroJitter] = React.useState(0);
+
+  const lockStartRef = React.useRef<number | null>(null);
+  const previousMidiRef = React.useRef<number | null>(midi);
+  const lastLockStateRef = React.useRef(false);
+
+  // Evaluate the current lock window whenever cents or midi change.
+  React.useEffect(() => {
+    const now = Date.now();
+    const hasPitch = midi !== null;
+    const withinLockWindow =
+      hasPitch && isFiniteCents(cents) && Math.abs(cents) <= LOCK_THRESHOLD_CENTS;
+
+    if (withinLockWindow) {
+      if (lockStartRef.current === null) {
+        lockStartRef.current = now;
+      }
+
+      if (!locked && now - lockStartRef.current >= LOCK_DURATION_MS) {
+        setLocked(true);
+      }
+      return;
+    }
+
+    // Outside the tight lock window so reset the timer.
+    lockStartRef.current = null;
+
+    if (
+      locked &&
+      (!hasPitch || !isFiniteCents(cents) || Math.abs(cents) >= LOCK_RELEASE_THRESHOLD_CENTS)
+    ) {
+      setLocked(false);
+    }
+  }, [cents, midi, locked]);
+
+  // Unlock immediately if the detected MIDI pitch changes.
+  React.useEffect(() => {
+    const previousMidi = previousMidiRef.current;
+    previousMidiRef.current = midi;
+
+    if (previousMidi !== null && midi !== null && previousMidi !== midi && locked) {
+      lockStartRef.current = null;
+      setLocked(false);
+    }
+  }, [midi, locked]);
+
+  // Trigger the success haptic precisely when we enter the locked state.
+  React.useEffect(() => {
+    const wasLocked = lastLockStateRef.current;
+    if (locked && !wasLocked) {
+      lastLockStateRef.current = true;
+      void triggerSuccessLock();
+      return;
+    }
+
+    if (!locked && wasLocked) {
+      lastLockStateRef.current = false;
+      setMicroJitter(0);
+    }
+  }, [locked]);
+
+  // Animate subtle tint variations while locked so the UI feels alive.
+  React.useEffect(() => {
+    if (!locked) {
+      setMicroJitter(0);
+      return;
+    }
+
+    let frame = 0;
+    let isMounted = true;
+    let startTimestamp: number | null = null;
+    let lastUpdate = 0;
+
+    const tick = (timestamp: number) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (startTimestamp === null) {
+        startTimestamp = timestamp;
+      }
+
+      if (timestamp - lastUpdate >= MICRO_JITTER_INTERVAL_MS) {
+        const elapsed = (timestamp - startTimestamp) / 1000;
+        const waveA = Math.sin(elapsed * 4.2);
+        const waveB = Math.sin(elapsed * 2.1 + 1.4);
+        const normalised = (waveA + waveB + 2) / 4; // Range [0,1]
+        setMicroJitter(normalised);
+        lastUpdate = timestamp;
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+
+    return () => {
+      isMounted = false;
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+    };
+  }, [locked]);
+
+  const indicatorTint = React.useMemo(() => {
+    if (!locked) {
+      return baseTint;
+    }
+
+    const shimmer = mixHexColors(EMERALD_DARK, EMERALD_LIGHT, 0.35 + microJitter * 0.45);
+    return mixHexColors(EMERALD_BASE, shimmer, 0.65);
+  }, [baseTint, locked, microJitter]);
+
+  return { locked, indicatorTint };
+};
+
+export default usePitchLock;

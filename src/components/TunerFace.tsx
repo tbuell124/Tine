@@ -4,6 +4,7 @@ import Animated, { runOnJS, useSharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { useTuner } from "@state/TunerStateContext";
+import { usePitchLock } from "@hooks/usePitchLock";
 import {
   DEG_PER_CENT,
   MAX_DISPLAY_DEG,
@@ -16,7 +17,7 @@ import {
 import stepSpring from "@utils/spring";
 import { InnerWheel } from "./InnerWheel";
 import { OuterWheel } from "./OuterWheel";
-import { IndexIndicator } from "./IndexIndicator";
+import { IndexIndicator, DEFAULT_INDICATOR_TINT } from "./IndexIndicator";
 
 const DEFAULT_SIZE = 320;
 const INNER_WHEEL_RATIO = 220 / 320; // Mirrors the defaults declared inside the wheel components.
@@ -83,7 +84,7 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   size = DEFAULT_SIZE,
   style,
   onDetent,
-  indicatorTint,
+  indicatorTint: indicatorTintOverride,
   showDetentPegs = true,
 }) => {
   const {
@@ -341,6 +342,13 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
 
   const innerRotation = springRef.current.angle;
 
+  const baseIndicatorTint = indicatorTintOverride ?? DEFAULT_INDICATOR_TINT;
+  const { locked, indicatorTint: computedIndicatorTint } = usePitchLock({
+    cents: pitch.cents,
+    midi: pitch.midi,
+    baseTint: baseIndicatorTint,
+  });
+
   const noteLabel = React.useMemo(() => {
     if (pitch.midi === null) {
       return "—";
@@ -401,13 +409,6 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     return midiToNoteName(DEFAULT_A4_MIDI);
   }, [pitch.noteName, pitch.midi]);
 
-  const locked = React.useMemo(() => {
-    if (pitch.midi === null) {
-      return false;
-    }
-    return Math.abs(pitch.cents) <= settings.lockThreshold;
-  }, [pitch.cents, pitch.midi, settings.lockThreshold]);
-
   const innerSize = size * INNER_WHEEL_RATIO;
 
   return (
@@ -429,7 +430,7 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
         </GestureDetector>
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <IndexIndicator size={size} tintColor={indicatorTint} locked={locked} />
+        <IndexIndicator size={size} tintColor={computedIndicatorTint} locked={locked} />
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <View style={styles.hudContainer}>

@@ -27,7 +27,7 @@ export type IndexIndicatorProps = {
   locked?: boolean;
 };
 
-const DEFAULT_TINT = "#f4d35e";
+export const DEFAULT_INDICATOR_TINT = "#f4d35e";
 const LOCK_LABEL = "IN TUNE";
 
 type BadgeLayout = {
@@ -268,7 +268,7 @@ const buildPipHighlightPaint = (pipLength: number): SkPaint => {
 
 export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   size = 320,
-  tintColor = DEFAULT_TINT,
+  tintColor = DEFAULT_INDICATOR_TINT,
   locked = false,
 }) => {
   const center = size / 2;

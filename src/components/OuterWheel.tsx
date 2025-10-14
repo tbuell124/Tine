@@ -3,13 +3,11 @@ import {
   Canvas,
   Circle,
   Group,
-  Line,
   PaintStyle,
-  Path,
+  Picture,
   Skia,
   StrokeCap,
   StrokeJoin,
-  Text,
   TileMode,
   vec,
   type SkFont,
@@ -20,6 +18,7 @@ import {
 import { useSpecularHighlight } from "@hooks/useSpecularHighlight";
 
 import { createSpecularHighlightPaint } from "./shaders/specularHighlight";
+import { recordPicture } from "@utils/skia";
 
 export type OuterWheelProps = {
   /**
@@ -149,7 +148,7 @@ const buildLabelFont = (size: number): SkFont => {
   return Skia.Font(typeface, size);
 };
 
-export const OuterWheel: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0 }) => {
+const OuterWheelComponent: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0 }) => {
   const center = size / 2;
   const outerRadius = size * 0.48;
   const innerRadius = size * 0.35;
@@ -230,51 +229,94 @@ export const OuterWheel: React.FC<OuterWheelProps> = ({ size = 320, rotation = 0
     });
   }, [center, innerRadius, outerRadius, size]);
 
+  const staticPicture = useMemo(
+    () =>
+      recordPicture(size, size, (canvas) => {
+        canvas.drawCircle(center, center, outerRadius, brushedPaint);
+        canvas.drawCircle(center, center, outerRadius, radialHighlightPaint);
+
+        const segmentPaint = Skia.Paint();
+        segmentPaint.setStyle(PaintStyle.Fill);
+        segmentPaint.setAntiAlias(true);
+
+        segmentPaths.forEach(({ path }, index) => {
+          const intensity = 0.15 + (index % 2 === 0 ? 0.1 : 0);
+          segmentPaint.setColor(Skia.Color(`rgba(0, 0, 0, ${intensity})`));
+          canvas.drawPath(path, segmentPaint);
+        });
+
+        const notchShadowPaint = Skia.Paint();
+        notchShadowPaint.setStyle(PaintStyle.Stroke);
+        notchShadowPaint.setStrokeCap(StrokeCap.Round);
+        notchShadowPaint.setStrokeJoin(StrokeJoin.Round);
+        notchShadowPaint.setStrokeWidth(size * 0.008);
+        notchShadowPaint.setColor(Skia.Color("rgba(0,0,0,0.35)"));
+        notchShadowPaint.setAntiAlias(true);
+
+        const notchHighlightPaint = Skia.Paint();
+        notchHighlightPaint.setStyle(PaintStyle.Stroke);
+        notchHighlightPaint.setStrokeCap(StrokeCap.Round);
+        notchHighlightPaint.setStrokeJoin(StrokeJoin.Round);
+        notchHighlightPaint.setStrokeWidth(size * 0.006);
+        notchHighlightPaint.setColor(Skia.Color("rgba(255,255,255,0.25)"));
+        notchHighlightPaint.setAntiAlias(true);
+
+        notchData.forEach(({ outerPoint, innerPoint, insetOuter }) => {
+          canvas.drawLine(outerPoint.x, outerPoint.y, innerPoint.x, innerPoint.y, notchShadowPaint);
+          canvas.drawLine(insetOuter.x, insetOuter.y, outerPoint.x, outerPoint.y, notchHighlightPaint);
+        });
+
+        const labelShadowPaint = Skia.Paint();
+        labelShadowPaint.setColor(Skia.Color("rgba(255,255,255,0.2)"));
+        labelShadowPaint.setAntiAlias(true);
+
+        const labelPaint = Skia.Paint();
+        labelPaint.setColor(Skia.Color("rgba(0,0,0,0.65)"));
+        labelPaint.setAntiAlias(true);
+
+        labelData.forEach(({ text, x, y }) => {
+          canvas.drawText(text, x + size * 0.0025, y + size * 0.0025, labelShadowPaint, font);
+          canvas.drawText(text, x, y, labelPaint, font);
+        });
+
+        canvas.drawCircle(center, center, outerRadius, outerChamferPaint);
+        canvas.drawCircle(center, center, chamferInnerRadius, innerChamferPaint);
+      }),
+    [
+      size,
+      center,
+      outerRadius,
+      radialHighlightPaint,
+      brushedPaint,
+      segmentPaths,
+      notchData,
+      labelData,
+      font,
+      outerChamferPaint,
+      innerChamferPaint,
+      chamferInnerRadius,
+    ],
+  );
+
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group origin={vec(center, center)} transform={[{ rotate: rotation }]}>
-        <Circle cx={center} cy={center} r={outerRadius} paint={brushedPaint} />
-        <Circle cx={center} cy={center} r={outerRadius} paint={radialHighlightPaint} />
-
-        {segmentPaths.map(({ path }, index) => {
-          const intensity = 0.15 + (index % 2 === 0 ? 0.1 : 0);
-          const fillColor = `rgba(0, 0, 0, ${intensity})`;
-          return <Path key={`segment-${index}`} path={path} color={fillColor} />;
-        })}
-
+        <Picture picture={staticPicture} />
         {specularHighlightPaint ? (
           <Circle cx={center} cy={center} r={outerRadius} paint={specularHighlightPaint} />
         ) : null}
-
-        <Circle cx={center} cy={center} r={outerRadius} paint={outerChamferPaint} />
-        <Circle cx={center} cy={center} r={chamferInnerRadius} paint={innerChamferPaint} />
-
-        {notchData.map(({ outerPoint, innerPoint, insetOuter }, index) => (
-          <React.Fragment key={`notch-${index}`}>
-            <Line
-              p1={vec(outerPoint.x, outerPoint.y)}
-              p2={vec(innerPoint.x, innerPoint.y)}
-              strokeWidth={size * 0.008}
-              color="rgba(0,0,0,0.35)"
-            />
-            <Line
-              p1={vec(insetOuter.x, insetOuter.y)}
-              p2={vec(outerPoint.x, outerPoint.y)}
-              strokeWidth={size * 0.006}
-              color="rgba(255,255,255,0.25)"
-            />
-          </React.Fragment>
-        ))}
-
-        {labelData.map(({ text, x, y }, index) => (
-          <React.Fragment key={`label-${index}`}>
-            <Text x={x + size * 0.0025} y={y + size * 0.0025} text={text} font={font} color="rgba(255,255,255,0.2)" />
-            <Text x={x} y={y} text={text} font={font} color="rgba(0,0,0,0.65)" />
-          </React.Fragment>
-        ))}
       </Group>
     </Canvas>
   );
 };
+
+const OuterWheel = React.memo(
+  OuterWheelComponent,
+  (prev, next) => prev.size === next.size && prev.rotation === next.rotation,
+);
+
+OuterWheel.displayName = "OuterWheel";
+
+export { OuterWheel };
 
 export default OuterWheel;

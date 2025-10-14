@@ -25,7 +25,7 @@ const AnimatedText = Animated.createAnimatedComponent(Animated.Text);
  * InteractiveOrb renders the Skia canvas and gesture handler wiring that powers the
  * draggable gradient orb showcased on the home screen.
  */
-export const InteractiveOrb: React.FC = () => {
+const InteractiveOrbComponent: React.FC = () => {
   // Track the circle center inside Skia's value system for zero-copy updates.
   const circle = useSkiaCircle({ x: 160, y: 160 });
   // Shared value controls the informational text fade-in animation.
@@ -71,6 +71,12 @@ export const InteractiveOrb: React.FC = () => {
     </View>
   );
 };
+
+export const InteractiveOrb = React.memo(InteractiveOrbComponent);
+
+InteractiveOrb.displayName = 'InteractiveOrb';
+
+export default InteractiveOrb;
 
 const styles = StyleSheet.create({
   container: {

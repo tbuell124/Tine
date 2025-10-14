@@ -9,16 +9,21 @@ import {
   type TuningState,
 } from "../theme";
 
-const LOCK_THRESHOLD_CENTS = 2;
-const LOCK_RELEASE_THRESHOLD_CENTS = 4;
-const LOCK_DURATION_MS = 400;
+const RELEASE_THRESHOLD_MULTIPLIER = 1.75;
 const MICRO_JITTER_INTERVAL_MS = 80;
+const MIN_LOCK_THRESHOLD = 0.5;
+const MIN_RELEASE_DELTA = 0.5;
+const MIN_LOCK_DURATION_MS = 120;
 
 export interface UsePitchLockOptions {
   /** Current cents deviation reported by the tuner. */
   cents: number;
   /** MIDI number of the detected pitch. `null` indicates no reliable lock. */
   midi: number | null;
+  /** ± cents window required before we enter the locked state. */
+  thresholdCents: number;
+  /** Milliseconds the pitch must remain within the window to register a lock. */
+  dwellTimeMs: number;
 }
 
 export interface UsePitchLockState {
@@ -34,11 +39,17 @@ const isFiniteCents = (value: number): boolean => Number.isFinite(value);
 
 /**
  * Tracks whether the tuner should be considered "locked" by observing the cents
- * value over time. When the signal stays within ±2¢ for 400ms we treat it as a
- * lock, trigger a success haptic, and swap the indicator tint to an emerald
- * finish. Unlocking introduces a small hysteresis to prevent rapid flicker.
+ * value over time. When the signal stays within a user-configurable window for
+ * the specified dwell period we treat it as a lock, trigger a success haptic,
+ * and swap the indicator tint to an emerald finish. Unlocking introduces a
+ * small hysteresis to prevent rapid flicker.
  */
-export const usePitchLock = ({ cents, midi }: UsePitchLockOptions): UsePitchLockState => {
+export const usePitchLock = ({
+  cents,
+  midi,
+  thresholdCents,
+  dwellTimeMs,
+}: UsePitchLockOptions): UsePitchLockState => {
   const [locked, setLocked] = React.useState(false);
   const [microJitter, setMicroJitter] = React.useState(0);
 
@@ -46,19 +57,39 @@ export const usePitchLock = ({ cents, midi }: UsePitchLockOptions): UsePitchLock
   const previousMidiRef = React.useRef<number | null>(midi);
   const lastLockStateRef = React.useRef(false);
 
+  const lockThreshold = React.useMemo(() => {
+    if (!Number.isFinite(thresholdCents)) {
+      return MIN_LOCK_THRESHOLD;
+    }
+    return Math.max(MIN_LOCK_THRESHOLD, thresholdCents);
+  }, [thresholdCents]);
+
+  const dwellDuration = React.useMemo(() => {
+    if (!Number.isFinite(dwellTimeMs)) {
+      return MIN_LOCK_DURATION_MS;
+    }
+
+    return Math.max(MIN_LOCK_DURATION_MS, dwellTimeMs);
+  }, [dwellTimeMs]);
+
+  const releaseThreshold = React.useMemo(() => {
+    const release = lockThreshold * RELEASE_THRESHOLD_MULTIPLIER;
+    return Math.max(lockThreshold + MIN_RELEASE_DELTA, release);
+  }, [lockThreshold]);
+
   // Evaluate the current lock window whenever cents or midi change.
   React.useEffect(() => {
     const now = Date.now();
     const hasPitch = midi !== null;
     const withinLockWindow =
-      hasPitch && isFiniteCents(cents) && Math.abs(cents) <= LOCK_THRESHOLD_CENTS;
+      hasPitch && isFiniteCents(cents) && Math.abs(cents) <= lockThreshold;
 
     if (withinLockWindow) {
       if (lockStartRef.current === null) {
         lockStartRef.current = now;
       }
 
-      if (!locked && now - lockStartRef.current >= LOCK_DURATION_MS) {
+      if (!locked && now - lockStartRef.current >= dwellDuration) {
         setLocked(true);
       }
       return;
@@ -67,13 +98,10 @@ export const usePitchLock = ({ cents, midi }: UsePitchLockOptions): UsePitchLock
     // Outside the tight lock window so reset the timer.
     lockStartRef.current = null;
 
-    if (
-      locked &&
-      (!hasPitch || !isFiniteCents(cents) || Math.abs(cents) >= LOCK_RELEASE_THRESHOLD_CENTS)
-    ) {
+    if (locked && (!hasPitch || !isFiniteCents(cents) || Math.abs(cents) >= releaseThreshold)) {
       setLocked(false);
     }
-  }, [cents, midi, locked]);
+  }, [cents, dwellDuration, lockThreshold, locked, midi, releaseThreshold]);
 
   // Unlock immediately if the detected MIDI pitch changes.
   React.useEffect(() => {

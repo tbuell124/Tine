@@ -1,20 +1,11 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": "src",
-    "paths": {
-      "@components/*": ["components/*"],
-      "@hooks/*": ["hooks/*"],
-      "@native/*": ["native/*"],
-      "@utils/*": ["utils/*"]
-    }
+    "noImplicitAny": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts", "**/*.tsx", "expo-env.d.ts"],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js"]
 }

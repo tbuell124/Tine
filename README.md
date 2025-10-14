@@ -1,173 +1,183 @@
-# Two Wheels, One Alignment Moment
+# Tine – Dual-Wheel Reactive Tuner
 
-Two Wheels, One Alignment Moment is a precision tuner crafted for React Native + Expo with GPU-accelerated visuals and low-latency audio capture. Inspired by mechanical strobe tuners, the interface presents twin concentric wheels that settle into alignment when the played pitch is perfectly in tune. The project combines custom Skia rendering, expressive haptics, and a pragmatic DSP core to deliver a tactile tuning experience on modern iOS and Android devices.
+Tine is a React Native + Expo application that delivers the tactile feel of a strobe tuner with GPU-accelerated wheels and a low-latency audio pipeline. The project targets both iOS and Android using a single TypeScript codebase with platform-native audio bridges.
 
-> **Status:** Active development. The main branch houses a functional prototype of the tuning wheel UI. Audio input and advanced DSP logic are under active implementation.
+> **Status:** Active development. The UI is functional and the DSP stack is under construction. Use the deployment guides in [`docs/`](./docs) when preparing builds for distribution.
 
 ---
 
 ## Table of contents
 
-1. [Features](#features)
-2. [Quick start](#quick-start)
-3. [Project structure](#project-structure)
-4. [Development workflow](#development-workflow)
-5. [Testing](#testing)
-6. [Deployment overview](#deployment-overview)
-7. [Troubleshooting](#troubleshooting)
-8. [Contributing](#contributing)
-9. [License](#license)
+1. [Project overview](#project-overview)
+2. [Prerequisites](#prerequisites)
+3. [Clone the repository](#clone-the-repository)
+4. [Install dependencies](#install-dependencies)
+5. [Run the app locally](#run-the-app-locally)
+6. [Project structure](#project-structure)
+7. [Quality checks](#quality-checks)
+8. [Deployment guides](#deployment-guides)
+9. [Troubleshooting](#troubleshooting)
+10. [Contributing](#contributing)
+11. [License](#license)
 
 ---
 
-## Features
+## Project overview
 
-- **Dual-wheel feedback** – Outer NOTE wheel snaps across 12 pitch classes while the inner CENTS wheel sweeps ±50¢ with 5¢ detents, giving an immediate sense of coarse and fine pitch error.
-- **Expressive lock state** – When both wheels align at the 12 o'clock index, the UI triggers subtle haptics, a metallic tick, and a glow animation to celebrate accurate tuning.
-- **Accessibility-first design** – High-contrast glyphs, large tap targets, and VoiceOver-ready labels keep the tuner inclusive. Optional numeric readouts provide frequency clarity.
-- **Skia-powered visuals** – `@shopify/react-native-skia` drives brushed metal materials, micro-chamfers, and responsive lighting that reacts to device tilt.
-- **Extensible audio stack** – Native bridges (Swift/Kotlin) expose low-latency microphone input to the TypeScript layer for YIN-based pitch detection, smoothing, and lock heuristics.
+- **Dual-wheel feedback** – Outer NOTE wheel jumps across the 12 pitch classes while the inner CENTS wheel sweeps ±50¢ in 5¢ detents, providing coarse and fine error cues at a glance.
+- **Lock celebration** – When the wheels align, Tine triggers subtle haptics, a metallic tick, and an emissive glow animation to reward accuracy.
+- **Skia-powered visuals** – [`@shopify/react-native-skia`](https://shopify.github.io/react-native-skia/) renders the wheels, metallic textures, and tilt-driven lighting in real time.
+- **Accessibility-first UI** – VoiceOver labels, high-contrast glyphs, and optional numeric readouts keep the tuner inclusive.
+- **Evolving DSP core** – Native audio bridges (Swift/Kotlin) feed TypeScript-based YIN + MPM pitch detection with adaptive smoothing.
 
-## Quick start
+## Prerequisites
 
-The steps below assume you have never set up a React Native or Expo project before. If you already have a working environment you can skim for the commands in **bold**.
+Follow this checklist before cloning the project. macOS steps are listed first because iOS builds require a Mac.
 
-### 1. Install the required tools
+### macOS tooling
 
-1. **Install Node.js 18 or newer** from [nodejs.org](https://nodejs.org/) (the “LTS” installer is fine). Accept the defaults and restart your terminal when prompted.
-2. **Install Git** if it is not already available (`git --version` should print a version number). Use [git-scm.com](https://git-scm.com/downloads) for macOS/Windows installers.
-3. **Install a package manager**. npm ships with Node, but many developers prefer Yarn. Either is fine; this guide uses npm.
-4. **macOS only:** install [Watchman](https://facebook.github.io/watchman/docs/install) (`brew install watchman`) to improve file-watching performance.
-5. **iOS builds:** install Xcode 15 or newer from the Mac App Store and launch it once to accept the license.
-6. **Android builds:** install Android Studio (latest stable). During the first launch select the Android SDK Platform 34, Android SDK Build-Tools 34, and NDK 26. Enable the “Android Virtual Device” component if you plan to use an emulator.
+| Tool | Minimum version | Install command / link | Notes |
+| --- | --- | --- | --- |
+| Xcode | 15.0 | [Mac App Store](https://apps.apple.com/us/app/xcode/id497799835) or [Apple Developer downloads](https://developer.apple.com/download/all/?q=Xcode) | Launch once after installation to accept the license. |
+| CocoaPods | 1.15 | `sudo gem install cocoapods` | Required for iOS native dependencies. |
+| Watchman | Latest | `brew install watchman` | Improves file watching performance. |
 
-### 2. Clone the project and install dependencies
+> **App Store blocked?** Sign in to [developer.apple.com/download/all](https://developer.apple.com/download/all/?q=Xcode) and download the `.xip` installer directly. Mount the archive, drag Xcode into `/Applications`, then launch it once to finish setup.
+
+### Cross-platform tooling
+
+| Tool | Recommended version | Install instructions |
+| --- | --- | --- |
+| Node.js | 20 LTS (20.15 at the time of writing) | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) and run `nvm install 20 && nvm use 20`. Expo 51 does **not** support Node 22+ yet. |
+| npm | Bundled with Node | No separate installation required. |
+| Yarn (optional) | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable`. Avoid `npm install --global yarn` if `/usr/local/bin/yarn` already exists. |
+| Git | 2.39+ | `git --version` should report a version. Install via [git-scm.com](https://git-scm.com/downloads) if needed. |
+| Expo CLI | Bundled | Use `npx expo <command>`; no global install required. |
+
+If you previously attempted a global Yarn install and saw `EEXIST: file already exists /usr/local/bin/yarnpkg`, remove the conflicting shim (`sudo rm /usr/local/bin/yarn /usr/local/bin/yarnpkg`) or prefer Corepack.
+
+## Clone the repository
+
+Run the following command from any directory on your Mac (or other development machine):
 
 ```bash
-git clone https://github.com/<your-org>/two-wheels-one-alignment-moment.git
-cd two-wheels-one-alignment-moment
+git clone https://github.com/tylerbuell/Tine.git
+cd Tine
+```
 
-# Install JavaScript dependencies (creates node_modules/)
+If you use SSH keys with GitHub, substitute the HTTPS URL with `git@github.com:tylerbuell/Tine.git`.
+
+## Install dependencies
+
+Tine uses Expo 51 with React Native 0.74. Install JavaScript dependencies using npm (recommended) or Yarn.
+
+### Using npm
+
+```bash
+# Ensure you are using Node 20 LTS
+node --version
 npm install
 ```
 
-> **Troubleshooting:** If `npm install` fails with a permissions error, retry the command in a new terminal window or consult the [npm permissions guide](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
-
-### 3. Start the Expo development server
+### Using Yarn 4 (via Corepack)
 
 ```bash
-# Launch Expo and Metro bundler in interactive mode
+corepack enable
+yarn install
+```
+
+If the install fails with `@shopify/react-native-skia` not found, synchronize the package version with Expo’s recommendations:
+
+1. Check available versions: `npm view @shopify/react-native-skia versions --json | tail`.
+2. Install a published version compatible with Expo 51, for example:
+   ```bash
+   npx expo install @shopify/react-native-skia@0.1.266
+   ```
+3. Re-run `npm install` or `yarn install`.
+
+> **Tip:** Delete `node_modules` and `package-lock.json` (or `yarn.lock`) before retrying if the resolver becomes stuck.
+
+## Run the app locally
+
+```bash
+# Start the Expo development server (Metro bundler)
 npm run start
 ```
 
-Expo will open a browser window showing a QR code and a command menu. Leave this terminal running while you develop.
+Expo opens a developer tools tab in your browser. Keep the terminal running and choose a target:
 
-### 4. Open the app on your preferred platform
+- Press `i` to launch the iOS simulator (macOS only).
+- Press `a` to launch the default Android emulator.
+- Scan the QR code with Expo Go on a physical device (App Store / Play Store).
+- Press `w` for a web preview (mic input limited).
 
-- **iOS simulator (macOS only):** Press `i` in the terminal window running Expo. The iOS simulator will boot and install the app automatically.
-- **Physical iPhone:** Install the **Expo Go** app from the App Store, sign in with a free Expo account, then scan the QR code displayed in the browser.
-- **Android emulator:** Press `a` to launch the default emulator (make sure one is configured in Android Studio first).
-- **Physical Android phone:** Install **Expo Go** from the Play Store, sign in, and either scan the QR code or type the development server URL shown in the browser.
-- **Web preview:** Press `w` to open a browser-based preview. Rendering works, but microphone capture is limited to mobile devices.
-
-Once the app loads you can edit files in `src/` and the changes will hot-reload automatically.
+Live reload is enabled by default. Update files in `src/` and watch changes refresh automatically.
 
 ## Project structure
 
 ```
-app/
-├── src/
-│   ├── components/      # Skia wheel, indicators, and HUD widgets
-│   ├── hooks/           # Audio lifecycle, lock logic, gesture overrides
-│   ├── lib/             # DSP utilities, smoothing constants, color ramps
-│   ├── screens/         # Root tuner screen and auxiliary views
-│   └── theme/           # Typography, spacing, and material parameters
-├── ios/                 # Native iOS host and audio bridge
-├── android/             # Native Android host and audio bridge
-├── assets/              # Icons, splash screens, and illustrative artwork
-└── docs/                # Deployment plan, design references, accessibility notes
+.
+├── android/            # Native Android host project and audio bridge scaffolding
+├── assets/             # App icons, splash art, and marketing imagery
+├── docs/               # Platform deployment guides (iOS and Android)
+├── ios/                # Native iOS host project and audio bridge scaffolding
+├── src/                # TypeScript source (components, hooks, screens, theming)
+├── App.tsx             # Entry point for Expo Router
+├── app.json            # Expo configuration (name, slug, bundle IDs)
+├── package.json        # Dependencies and npm scripts
+└── README.md           # You are here
 ```
 
-> **Note:** Binary assets (`icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png`) are required by Expo but excluded from source control. Supply your own artwork before creating release builds.
+Key source directories:
 
-## Architecture decisions
+- `src/components/` – Skia wheels, indicators, and HUD elements.
+- `src/hooks/` – Audio session lifecycle, tilt detection, lock heuristics.
+- `src/lib/` – DSP utilities, smoothing constants, frequency helpers.
+- `src/screens/` – Primary tuner interface and future auxiliary screens.
+- `src/theme/` – Typography, color ramps, and spacing tokens.
 
-- [Audio Stack Migration Plan](./docs/audio-stack-migration.md) – documents the removal of Expo AV/Sensors in favour of native `AVAudioEngine` (iOS) and Oboe (Android) bridges so the tuner can meet its < 10 ms latency target without the additional buffering introduced by managed wrappers.
+## Quality checks
 
-## Development workflow
+Run these commands before committing code:
 
-1. **Install dependencies** – Run `npm install` (or `yarn install`) after cloning or whenever dependencies change.
-2. **Run Metro** – Start the bundler with `npm run start` and attach your target device/emulator.
-3. **Iterate on UI** – Edit files inside `app/src`. React Native Fast Refresh reflects changes instantly.
-4. **Skia sandboxing (optional)** – Create isolated component previews using Expo's `@shopify/react-native-skia` playground or Storybook (see `docs/` for setup notes).
-5. **Native modules** – Modify `ios/` or `android/` when working on audio bridges. Ensure you rebuild the native project after changing Swift/Kotlin code.
+```bash
+npm run lint         # ESLint rules (Expo + React Native)
+npm run test         # Jest + Testing Library
+npm run format:check # Prettier formatting verification
+```
 
-## Testing
+Type safety is enforced through TypeScript; add `npm run typecheck` if you enable the script.
 
-- **Unit tests** – `npm run test` executes Jest-based tests covering DSP utilities, smoothing curves, and view-model logic.
-- **Linting** – `npm run lint` enforces the Expo/React Native lint ruleset.
-- **Type safety** – `npm run typecheck` runs `tsc --noEmit` to verify TypeScript types.
-- **Visual regression (optional)** – Integrate [`@shopify/react-native-skia` snapshot testing](https://shopify.github.io/react-native-skia/docs/guides/testing/) to validate rendering changes.
+## Deployment guides
 
-## Deployment overview
+Detailed, step-by-step release playbooks live in:
 
-### Beginner-friendly release checklist
+- [`docs/iOS Deployment Guide.md`](./docs/iOS%20Deployment%20Guide.md)
+- [`docs/Android Deployment Guide.md`](./docs/Android%20Deployment%20Guide.md)
 
-If this is your first time shipping an Expo/React Native application, walk through the checklist below. Each step links out to the relevant Expo or platform documentation for deeper dives.
-
-1. **Create the necessary developer accounts.**
-   - Apple: join the [Apple Developer Program](https://developer.apple.com/programs/) with an Apple ID ($99/year).
-   - Google: create a [Google Play Console](https://play.google.com/console/about/) developer account ($25 one-time).
-2. **Install the Expo CLI globally** for release tooling: `npm install --global expo-cli`.
-3. **Sign in to Expo** in your terminal: `expo login`. Free accounts are sufficient for test builds.
-4. **Configure the app metadata** in `app.json` (name, slug, bundle identifiers). The defaults work for local testing; update them before submitting to stores.
-5. **Generate native builds** using Expo Application Services (recommended for beginners):
-   - iOS: `npx expo build:ios --type archive` (prompts you to create or upload signing certificates).
-   - Android: `npx expo build:android --type app-bundle`.
-   Expo hosts the signed artifacts and provides download links when the build finishes.
-6. **Test the resulting builds** on physical devices before submitting. Install the `.ipa` via TestFlight and the `.aab` via the Play Console internal testing track.
-7. **Prepare store listing assets** (screenshots, descriptions, privacy statements). Use the in-app lock animation and tuning wheel screens for visuals.
-8. **Submit for review** following the platform-specific steps below. Keep track of review feedback in your team’s project tracker.
-
-The rest of this section provides additional detail for experienced teams or anyone migrating to custom CI/CD.
-
-High-level guidance for shipping to the Apple App Store and Google Play Store:
-
-### iOS (App Store)
-
-1. Configure bundle identifiers, signing, and provisioning in Xcode (or via `eas.json` if migrating to EAS Build).
-2. Build a release IPA using Fastlane or Expo Application Services with production credentials.
-3. Upload to TestFlight for QA. Gather lock-state accuracy, latency, and accessibility feedback.
-4. Prepare App Store metadata (title, subtitle, description, keywords), privacy answers (microphone usage only), screenshots (6.7" + 6.1"), and an optional preview video.
-5. Submit for App Review and monitor status via App Store Connect. After approval, schedule or release immediately.
-
-### Android (Google Play)
-
-1. Set the applicationId, versionCode, and release keystore inside `android/`.
-2. Generate a signed Android App Bundle (`./gradlew bundleRelease`) via Fastlane or EAS Build.
-3. Upload the AAB to the Google Play Console (internal or closed testing track first).
-4. Complete Play listing details (descriptions, icons, feature graphic, screenshots for phones/tablets) and the Data Safety questionnaire (microphone data processed on-device, no sharing).
-5. Promote the build to production with a staged rollout and monitor Crashlytics/Play Vitals.
-
-See [`docs/DEPLOYMENT_PLAN.md`](./docs/DEPLOYMENT_PLAN.md) for a detailed CI/CD blueprint covering branching, Fastlane lanes, secrets management, beta workflows, and rollback strategies.
+Each guide covers credential setup, build tooling, store submissions, and post-release monitoring.
 
 ## Troubleshooting
 
-| Symptom | Possible Fix |
+| Symptom | Fix |
 | --- | --- |
-| Metro bundler fails with `EADDRINUSE` | Stop other Expo/Metro instances (`lsof -n -i4TCP:8081`) and restart `npm run start`. |
-| iOS simulator lacks microphone input | Use a physical device; the simulator does not pipe real mic audio into the app. |
-| Android build fails on M1/M2 Macs | Ensure Android SDK/NDK are installed for arm64 and run `sudo softwareupdate --install-rosetta` if Gradle requires x86 tooling. |
-| Skia canvas renders black | Verify the Skia package is configured and restart the bundler after clearing cache (`npm run start -- --clear`). |
+| **`@shopify/react-native-skia@0.1.243` unavailable** | Use `npx expo install @shopify/react-native-skia@<published-version>` after verifying available versions with `npm view`. Expo SDK 51 works with 0.1.26x releases. |
+| **`ConfigError: Cannot determine the project's Expo SDK version because the module expo is not installed`** | Ensure `npm install` succeeds. This error is a side effect of the Skia resolver failure; fix Skia first, then reinstall. |
+| **`expo-cli` Node compatibility warning** | Use the local CLI (`npx expo ...`) and downgrade to Node 20 LTS. Node 22+ is not supported by legacy `expo-cli`. |
+| **Yarn global install `EEXIST` errors** | Yarn was previously installed. Remove `/usr/local/bin/yarn*` or use Homebrew/Corepack instead of `npm install --global yarn`. |
+| **App Store blocks Xcode downloads** | Download the `.xip` installer from the Apple Developer website, or sign out/in of the App Store, clear the App Store cache (`open -a App\ Store --args -reset`), and retry. |
+| **Need to reset Xcode without full reinstall** | Delete Derived Data (`rm -rf ~/Library/Developer/Xcode/DerivedData`), clear simulators (`xcrun simctl delete unavailable`), reset command-line tools (`sudo xcode-select --reset`), and optionally remove cached downloads (`rm -rf ~/Library/Caches/com.apple.dt.Xcode`). |
+| **Android build fails on Apple Silicon** | Install arm64 Android SDK/NDK packages via Android Studio and ensure Rosetta is installed if Gradle plugins require x86 binaries (`softwareupdate --install-rosetta`). |
+| **Metro bundler stuck on port 8081** | Kill other Metro instances (`lsof -n -i4TCP:8081`) and restart `npm run start`. |
 
 ## Contributing
 
 1. Fork the repository and create a topic branch: `git checkout -b feature/<short-description>`.
-2. Implement your changes with tests and docs.
-3. Run `npm run lint`, `npm run test`, and `npm run typecheck` to verify code quality.
-4. Update relevant documentation (README, `docs/`, in-app help) for new features.
-5. Submit a pull request with screenshots or videos highlighting visual/audio changes. Include latency metrics for DSP updates when possible.
+2. Write clear, well-documented code with inline comments where logic is complex.
+3. Run the quality checks listed above.
+4. Update this README or the deployment guides if behavior changes.
+5. Open a pull request with screenshots or videos showcasing UI changes and any latency metrics for DSP updates.
 
 ## License
 
-Copyright © Two Wheels, One Alignment Moment contributors. Released under the MIT License. See [LICENSE](./LICENSE) for details.
+Released under the MIT License. See [LICENSE](./LICENSE) for details.

@@ -1,0 +1,25 @@
+{
+  "name": "tine",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "android": "cd android && ./gradlew assembleRelease",
+    "android:debug": "npx react-native run-android --variant Debug",
+    "ios": "npx react-native run-ios --configuration Release",
+    "ios:debug": "npx react-native run-ios --configuration Debug",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@react-native-community/eslint-config": "^3.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5"
+  }
+}

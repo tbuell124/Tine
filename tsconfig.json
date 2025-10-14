@@ -4,7 +4,14 @@
     "strict": true,
     "noImplicitAny": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@native/*": ["src/native/*"],
+      "@utils/*": ["src/utils/*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx", "expo-env.d.ts"],
   "exclude": ["node_modules", "babel.config.js", "metro.config.js"]

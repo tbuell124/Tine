@@ -205,6 +205,67 @@ const buildHighlightPaint = (): SkPaint => {
   return paint;
 };
 
+const buildPipShadowPaint = (pipLength: number): SkPaint => {
+  const paint = Skia.Paint();
+  paint.setColor(Skia.Color("rgba(15,23,42,0.45)"));
+  paint.setMaskFilter(MaskFilter.MakeBlur(BlurStyle.Normal, pipLength * 0.18, true));
+  paint.setAntiAlias(true);
+  return paint;
+};
+
+const buildPipPath = (
+  center: number,
+  outerRadius: number,
+  pipLength: number,
+  pipWidth: number,
+): SkPath => {
+  const top = center - outerRadius - pipLength * 0.1;
+  const bottom = top + pipLength;
+  const left = center - pipWidth / 2;
+  const right = center + pipWidth / 2;
+
+  const path = Skia.Path.Make();
+  path.moveTo(center, top);
+  path.quadTo(right, top + pipLength * 0.35, center, bottom);
+  path.quadTo(left, top + pipLength * 0.35, center, top);
+  path.close();
+  return path;
+};
+
+const buildPipFillPaint = (tintColor: string, pipLength: number): SkPaint => {
+  const paint = Skia.Paint();
+  const shader = Skia.Shader.MakeLinearGradient(
+    vec(0, 0),
+    vec(0, pipLength),
+    [mixTint(tintColor, true, 0.65), mixTint(tintColor, false, 0.35)].map((color) =>
+      Skia.Color(color),
+    ),
+    [0, 1],
+    TileMode.Clamp,
+  );
+  paint.setShader(shader);
+  paint.setAntiAlias(true);
+  return paint;
+};
+
+const buildPipStrokePaint = (pipLength: number): SkPaint => {
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(Math.max(pipLength * 0.08, 1.4));
+  paint.setColor(Skia.Color("rgba(0,0,0,0.35)"));
+  paint.setAntiAlias(true);
+  return paint;
+};
+
+const buildPipHighlightPaint = (pipLength: number): SkPaint => {
+  const paint = Skia.Paint();
+  paint.setStyle(PaintStyle.Stroke);
+  paint.setStrokeWidth(Math.max(pipLength * 0.05, 1));
+  paint.setColor(Skia.Color("rgba(255,255,255,0.6)"));
+  paint.setAntiAlias(true);
+  return paint;
+};
+
 export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   size = 320,
   tintColor = DEFAULT_TINT,
@@ -260,6 +321,20 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   );
   const highlightPaint = useMemo(() => buildHighlightPaint(), []);
 
+  const pipLength = size * 0.18;
+  const pipWidth = size * 0.11;
+  const pipPath = useMemo(
+    () => buildPipPath(center, outerRadius, pipLength, pipWidth),
+    [center, outerRadius, pipLength, pipWidth],
+  );
+  const pipFillPaint = useMemo(
+    () => buildPipFillPaint(tintColor, pipLength),
+    [pipLength, tintColor],
+  );
+  const pipStrokePaint = useMemo(() => buildPipStrokePaint(pipLength), [pipLength]);
+  const pipHighlightPaint = useMemo(() => buildPipHighlightPaint(pipLength), [pipLength]);
+  const pipShadowPaint = useMemo(() => buildPipShadowPaint(pipLength), [pipLength]);
+
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group>
@@ -276,6 +351,14 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
 
         {/* Glass reflection overlay */}
         <Path path={highlightPath} paint={highlightPaint} />
+
+        {/* Fixed pip at 12 o'clock */}
+        <Group>
+          <Path path={pipPath} paint={pipShadowPaint} />
+          <Path path={pipPath} paint={pipFillPaint} />
+          <Path path={pipPath} paint={pipStrokePaint} />
+          <Path path={pipPath} paint={pipHighlightPaint} />
+        </Group>
 
         {locked && lockRingPaint ? (
           <Circle cx={center} cy={center} r={lockRingRadius} paint={lockRingPaint} />

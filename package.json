@@ -49,6 +49,7 @@
     "react-test-renderer": "18.2.0",
     "prettier": "^3.3.2",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "expo-build-properties": "^0.12.5"
   }
 }

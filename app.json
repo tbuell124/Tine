@@ -14,10 +14,26 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "jsEngine": "hermes",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "TunePlay uses the microphone to analyze instrument pitch in real time.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
+      "versionCode": 1,
+      "permissions": [
+        "RECORD_AUDIO",
+        "VIBRATE"
+      ],
+      "newArchitecture": {
+        "enabled": true
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -28,6 +44,19 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": true,
+            "enableProguardInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.react.turbomodule.** { *; }"
+          },
+          "ios": {
+            "newArchEnabled": true
+          }
+        }
+      ],
       "react-native-reanimated/plugin"
     ]
   }

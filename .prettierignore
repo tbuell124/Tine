@@ -1,0 +1,14 @@
+# Ignore dependencies and build output
+node_modules
+android
+ios
+dist
+build
+.expo
+.expo-shared
+
+# Ignore Expo bundler artifacts
+*.log
+
+# Ignore TypeScript build info
+*.tsbuildinfo

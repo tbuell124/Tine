@@ -41,6 +41,8 @@ export interface TunerSettings {
   a4Calibration: number;
   sensitivityMode: 'gentle' | 'standard' | 'aggressive';
   lockThreshold: number;
+  /** When true the UI enters manual note selection mode and hides live cents readouts. */
+  manualMode: boolean;
 }
 
 /**
@@ -81,7 +83,8 @@ const initialState: TunerState = {
   settings: {
     a4Calibration: 440,
     sensitivityMode: 'standard',
-    lockThreshold: 5
+    lockThreshold: 5,
+    manualMode: false
   }
 };
 

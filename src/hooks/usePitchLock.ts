@@ -2,30 +2,32 @@ import React from "react";
 
 import { triggerSuccessLock } from "@utils/haptics";
 import { mixHexColors } from "@utils/color";
+import {
+  resolveTuningState,
+  tuningStateToColor,
+  tuningTheme,
+  type TuningState,
+} from "../theme";
 
 const LOCK_THRESHOLD_CENTS = 2;
 const LOCK_RELEASE_THRESHOLD_CENTS = 4;
 const LOCK_DURATION_MS = 400;
 const MICRO_JITTER_INTERVAL_MS = 80;
 
-const EMERALD_BASE = "#059669";
-const EMERALD_LIGHT = "#34d399";
-const EMERALD_DARK = "#047857";
-
 export interface UsePitchLockOptions {
   /** Current cents deviation reported by the tuner. */
   cents: number;
   /** MIDI number of the detected pitch. `null` indicates no reliable lock. */
   midi: number | null;
-  /** Base tint to fall back to when the tuner is not locked. */
-  baseTint: string;
 }
 
 export interface UsePitchLockState {
   /** Whether the tuner is currently considered locked. */
   locked: boolean;
-  /** Tint colour that should be applied to the index indicator. */
-  indicatorTint: string;
+  /** Current tuning status derived from cents deviation. */
+  status: TuningState;
+  /** Accent colour applied to the index overlay glow and rim. */
+  accentColor: string;
 }
 
 const isFiniteCents = (value: number): boolean => Number.isFinite(value);
@@ -36,7 +38,7 @@ const isFiniteCents = (value: number): boolean => Number.isFinite(value);
  * lock, trigger a success haptic, and swap the indicator tint to an emerald
  * finish. Unlocking introduces a small hysteresis to prevent rapid flicker.
  */
-export const usePitchLock = ({ cents, midi, baseTint }: UsePitchLockOptions): UsePitchLockState => {
+export const usePitchLock = ({ cents, midi }: UsePitchLockOptions): UsePitchLockState => {
   const [locked, setLocked] = React.useState(false);
   const [microJitter, setMicroJitter] = React.useState(0);
 
@@ -142,16 +144,25 @@ export const usePitchLock = ({ cents, midi, baseTint }: UsePitchLockOptions): Us
     };
   }, [locked]);
 
-  const indicatorTint = React.useMemo(() => {
-    if (!locked) {
-      return baseTint;
+  const status = React.useMemo(() => {
+    const resolvedCents = midi === null || !Number.isFinite(cents) ? null : cents;
+    return resolveTuningState(resolvedCents, locked);
+  }, [cents, locked, midi]);
+
+  const accentColor = React.useMemo(() => {
+    if (status === "locked") {
+      const shimmer = mixHexColors(
+        tuningTheme.tuningStates.locked.dark,
+        tuningTheme.tuningStates.locked.light,
+        0.35 + microJitter * 0.45,
+      );
+      return mixHexColors(tuningTheme.tuningStates.locked.base, shimmer, 0.65);
     }
 
-    const shimmer = mixHexColors(EMERALD_DARK, EMERALD_LIGHT, 0.35 + microJitter * 0.45);
-    return mixHexColors(EMERALD_BASE, shimmer, 0.65);
-  }, [baseTint, locked, microJitter]);
+    return tuningStateToColor(status);
+  }, [microJitter, status]);
 
-  return { locked, indicatorTint };
+  return { locked, status, accentColor };
 };
 
 export default usePitchLock;

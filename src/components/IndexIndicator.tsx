@@ -17,18 +17,33 @@ import {
   type SkPaint,
   type SkPath,
 } from "@shopify/react-native-skia";
+import { type TuningState } from "../theme";
 
 export type IndexIndicatorProps = {
   /** Overall rendered size of the indicator overlay in logical pixels. */
   size?: number;
   /** Base tint applied to the anodised aluminium surface. */
   tintColor?: string;
+  /** Accent tint applied to the glow and status ring. */
+  accentColor?: string;
   /** When true, renders a soft glow to reinforce the lock state. */
   locked?: boolean;
+  /** Current tuning state to drive colour intensity. */
+  status?: TuningState;
 };
 
 export const DEFAULT_INDICATOR_TINT = "#f4d35e";
 const LOCK_LABEL = "IN TUNE";
+
+const STATUS_VISUALS: Record<
+  TuningState,
+  { glowAlpha: number; ringAlpha: number; strokeScale: number }
+> = {
+  locked: { glowAlpha: 0.6, ringAlpha: 1, strokeScale: 0.12 },
+  near: { glowAlpha: 0.45, ringAlpha: 0.9, strokeScale: 0.11 },
+  approaching: { glowAlpha: 0.35, ringAlpha: 0.75, strokeScale: 0.1 },
+  far: { glowAlpha: 0.25, ringAlpha: 0.65, strokeScale: 0.095 },
+};
 
 type BadgeLayout = {
   path: SkPath;
@@ -81,10 +96,10 @@ const buildBezelPaint = (color: string, strokeWidth: number): SkPaint => {
   return paint;
 };
 
-const buildGlowPaint = (radius: number, tintColor: string): SkPaint => {
+const buildGlowPaint = (radius: number, accentColor: string, alpha: number): SkPaint => {
   const paint = Skia.Paint();
-  paint.setColor(Skia.Color(mixTint(tintColor, true, 0.35)));
-  paint.setAlphaf(0.55);
+  paint.setColor(Skia.Color(mixTint(accentColor, true, 0.35)));
+  paint.setAlphaf(alpha);
   paint.setMaskFilter(MaskFilter.MakeBlur(BlurStyle.Normal, radius * 0.18, true));
   return paint;
 };
@@ -95,28 +110,31 @@ const buildBadgeFont = (size: number): SkFont => {
   return Skia.Font(typeface, size);
 };
 
-const buildLockRingPaint = (
+const buildStatusRingPaint = (
   center: number,
   outerRadius: number,
-  tintColor: string,
+  accentColor: string,
+  strokeScale: number,
+  alpha: number,
 ): SkPaint => {
   const paint = Skia.Paint();
   const shader = Skia.Shader.MakeSweepGradient(
     vec(center, center),
     [
-      mixTint(tintColor, true, 0.85),
-      mixTint(tintColor, true, 0.35),
-      mixTint(tintColor, false, 0.05),
-      mixTint(tintColor, true, 0.85),
+      mixTint(accentColor, true, 0.65),
+      accentColor,
+      mixTint(accentColor, false, 0.35),
+      mixTint(accentColor, true, 0.65),
     ].map((color) => Skia.Color(color)),
     [0, 0.35, 0.7, 1],
     TileMode.Clamp,
   );
   paint.setShader(shader);
   paint.setStyle(PaintStyle.Stroke);
-  paint.setStrokeWidth(outerRadius * 0.12);
+  paint.setStrokeWidth(outerRadius * strokeScale);
   paint.setStrokeCap(StrokeCap.Round);
   paint.setStrokeJoin(StrokeJoin.Round);
+  paint.setAlphaf(alpha);
   paint.setAntiAlias(true);
   return paint;
 };
@@ -218,6 +236,7 @@ const buildPipPath = (
   outerRadius: number,
   pipLength: number,
   pipWidth: number,
+  locked: boolean,
 ): SkPath => {
   const top = center - outerRadius - pipLength * 0.1;
   const bottom = top + pipLength;
@@ -225,9 +244,17 @@ const buildPipPath = (
   const right = center + pipWidth / 2;
 
   const path = Skia.Path.Make();
-  path.moveTo(center, top);
-  path.quadTo(right, top + pipLength * 0.35, center, bottom);
-  path.quadTo(left, top + pipLength * 0.35, center, top);
+  if (locked) {
+    const mid = top + pipLength / 2;
+    path.moveTo(center, top);
+    path.lineTo(right, mid);
+    path.lineTo(center, bottom);
+    path.lineTo(left, mid);
+  } else {
+    path.moveTo(center, top);
+    path.quadTo(right, top + pipLength * 0.35, center, bottom);
+    path.quadTo(left, top + pipLength * 0.35, center, top);
+  }
   path.close();
   return path;
 };
@@ -269,12 +296,18 @@ const buildPipHighlightPaint = (pipLength: number): SkPaint => {
 export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   size = 320,
   tintColor = DEFAULT_INDICATOR_TINT,
+  accentColor,
   locked = false,
+  status,
 }) => {
   const center = size / 2;
   const outerRadius = size * 0.46;
   const bezelOuterRadius = outerRadius + size * 0.015;
   const bezelInnerRadius = outerRadius - size * 0.02;
+
+  const resolvedStatus: TuningState = status ?? (locked ? "locked" : "far");
+  const resolvedAccent = accentColor ?? tintColor;
+  const { glowAlpha, ringAlpha, strokeScale } = STATUS_VISUALS[resolvedStatus];
 
   const surfacePaint = useMemo(
     () => buildSurfacePaint(center, outerRadius, tintColor),
@@ -291,14 +324,17 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   );
 
   const glowPaint = useMemo(
-    () => (locked ? buildGlowPaint(outerRadius, tintColor) : undefined),
-    [locked, outerRadius, tintColor],
+    () => (glowAlpha > 0 ? buildGlowPaint(outerRadius, resolvedAccent, glowAlpha) : undefined),
+    [glowAlpha, outerRadius, resolvedAccent],
   );
 
-  const lockRingRadius = outerRadius * 0.78;
-  const lockRingPaint = useMemo(
-    () => (locked ? buildLockRingPaint(center, lockRingRadius, tintColor) : undefined),
-    [center, lockRingRadius, locked, tintColor],
+  const statusRingRadius = outerRadius * 0.78;
+  const statusRingPaint = useMemo(
+    () =>
+      ringAlpha > 0
+        ? buildStatusRingPaint(center, statusRingRadius, resolvedAccent, strokeScale, ringAlpha)
+        : undefined,
+    [center, resolvedAccent, ringAlpha, statusRingRadius, strokeScale],
   );
 
   const badgeFont = useMemo(() => buildBadgeFont(size * 0.11), [size]);
@@ -324,8 +360,8 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   const pipLength = size * 0.18;
   const pipWidth = size * 0.11;
   const pipPath = useMemo(
-    () => buildPipPath(center, outerRadius, pipLength, pipWidth),
-    [center, outerRadius, pipLength, pipWidth],
+    () => buildPipPath(center, outerRadius, pipLength, pipWidth, locked),
+    [center, locked, outerRadius, pipLength, pipWidth],
   );
   const pipFillPaint = useMemo(
     () => buildPipFillPaint(tintColor, pipLength),
@@ -338,7 +374,7 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group>
-        {locked && glowPaint ? (
+        {glowPaint ? (
           <Circle cx={center} cy={center} r={outerRadius * 1.04} paint={glowPaint} />
         ) : null}
 
@@ -360,8 +396,8 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
           <Path path={pipPath} paint={pipHighlightPaint} />
         </Group>
 
-        {locked && lockRingPaint ? (
-          <Circle cx={center} cy={center} r={lockRingRadius} paint={lockRingPaint} />
+        {statusRingPaint ? (
+          <Circle cx={center} cy={center} r={statusRingRadius} paint={statusRingPaint} />
         ) : null}
 
         {locked && badgeFillPaint && badgeStrokePaint ? (

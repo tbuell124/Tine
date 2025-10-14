@@ -343,10 +343,9 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
   const innerRotation = springRef.current.angle;
 
   const baseIndicatorTint = indicatorTintOverride ?? DEFAULT_INDICATOR_TINT;
-  const { locked, indicatorTint: computedIndicatorTint } = usePitchLock({
+  const { locked, accentColor: indicatorAccent, status: tuningStatus } = usePitchLock({
     cents: pitch.cents,
     midi: pitch.midi,
-    baseTint: baseIndicatorTint,
   });
 
   const noteLabel = React.useMemo(() => {
@@ -430,7 +429,13 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
         </GestureDetector>
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <IndexIndicator size={size} tintColor={computedIndicatorTint} locked={locked} />
+        <IndexIndicator
+          size={size}
+          tintColor={baseIndicatorTint}
+          accentColor={indicatorAccent}
+          locked={locked}
+          status={tuningStatus}
+        />
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <View style={styles.hudContainer}>

@@ -90,6 +90,10 @@ app/
 
 > **Note:** Binary assets (`icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png`) are required by Expo but excluded from source control. Supply your own artwork before creating release builds.
 
+## Architecture decisions
+
+- [Audio Stack Migration Plan](./docs/audio-stack-migration.md) – documents the removal of Expo AV/Sensors in favour of native `AVAudioEngine` (iOS) and Oboe (Android) bridges so the tuner can meet its < 10 ms latency target without the additional buffering introduced by managed wrappers.
+
 ## Development workflow
 
 1. **Install dependencies** – Run `npm install` (or `yarn install`) after cloning or whenever dependencies change.

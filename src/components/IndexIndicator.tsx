@@ -6,11 +6,10 @@ import {
   Group,
   MaskFilter,
   PaintStyle,
-  Path,
+  Picture,
   Skia,
   StrokeCap,
   StrokeJoin,
-  Text,
   TileMode,
   vec,
   type SkFont,
@@ -18,6 +17,7 @@ import {
   type SkPath,
 } from "@shopify/react-native-skia";
 import { type TuningState } from "../theme";
+import { recordPicture } from "@utils/skia";
 
 export type IndexIndicatorProps = {
   /** Overall rendered size of the indicator overlay in logical pixels. */
@@ -293,7 +293,7 @@ const buildPipHighlightPaint = (pipLength: number): SkPaint => {
   return paint;
 };
 
-export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
+const IndexIndicatorComponent: React.FC<IndexIndicatorProps> = ({
   size = 320,
   tintColor = DEFAULT_INDICATOR_TINT,
   accentColor,
@@ -371,6 +371,65 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
   const pipHighlightPaint = useMemo(() => buildPipHighlightPaint(pipLength), [pipLength]);
   const pipShadowPaint = useMemo(() => buildPipShadowPaint(pipLength), [pipLength]);
 
+  const basePicture = useMemo(
+    () =>
+      recordPicture(size, size, (canvas) => {
+        canvas.drawCircle(center, center, bezelOuterRadius, bezelHighlightPaint);
+        canvas.drawCircle(center, center, bezelInnerRadius, bezelShadowPaint);
+        canvas.drawCircle(center, center, outerRadius, surfacePaint);
+        canvas.drawPath(highlightPath, highlightPaint);
+
+        canvas.drawPath(pipPath, pipShadowPaint);
+        canvas.drawPath(pipPath, pipFillPaint);
+        canvas.drawPath(pipPath, pipStrokePaint);
+        canvas.drawPath(pipPath, pipHighlightPaint);
+
+        if (locked && badgeFillPaint && badgeStrokePaint) {
+          canvas.drawPath(badgeLayout.path, badgeFillPaint);
+          canvas.drawPath(badgeLayout.path, badgeStrokePaint);
+
+          const badgeShadowTextPaint = Skia.Paint();
+          badgeShadowTextPaint.setColor(Skia.Color("rgba(255, 255, 255, 0.55)"));
+          badgeShadowTextPaint.setAntiAlias(true);
+
+          const badgeTextPaint = Skia.Paint();
+          badgeTextPaint.setColor(Skia.Color("rgba(15, 23, 42, 0.95)"));
+          badgeTextPaint.setAntiAlias(true);
+
+          canvas.drawText(
+            LOCK_LABEL,
+            badgeLayout.textX + size * 0.002,
+            badgeLayout.textY + size * 0.002,
+            badgeShadowTextPaint,
+            badgeFont,
+          );
+          canvas.drawText(LOCK_LABEL, badgeLayout.textX, badgeLayout.textY, badgeTextPaint, badgeFont);
+        }
+      }),
+    [
+      size,
+      center,
+      bezelOuterRadius,
+      bezelInnerRadius,
+      outerRadius,
+      bezelHighlightPaint,
+      bezelShadowPaint,
+      surfacePaint,
+      highlightPath,
+      highlightPaint,
+      pipPath,
+      pipShadowPaint,
+      pipFillPaint,
+      pipStrokePaint,
+      pipHighlightPaint,
+      locked,
+      badgeFillPaint,
+      badgeStrokePaint,
+      badgeLayout,
+      badgeFont,
+    ],
+  );
+
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group>
@@ -378,51 +437,28 @@ export const IndexIndicator: React.FC<IndexIndicatorProps> = ({
           <Circle cx={center} cy={center} r={outerRadius * 1.04} paint={glowPaint} />
         ) : null}
 
-        {/* Micro-bezel outer ring */}
-        <Circle cx={center} cy={center} r={bezelOuterRadius} paint={bezelHighlightPaint} />
-        <Circle cx={center} cy={center} r={bezelInnerRadius} paint={bezelShadowPaint} />
-
-        {/* Tinted indicator surface */}
-        <Circle cx={center} cy={center} r={outerRadius} paint={surfacePaint} />
-
-        {/* Glass reflection overlay */}
-        <Path path={highlightPath} paint={highlightPaint} />
-
-        {/* Fixed pip at 12 o'clock */}
-        <Group>
-          <Path path={pipPath} paint={pipShadowPaint} />
-          <Path path={pipPath} paint={pipFillPaint} />
-          <Path path={pipPath} paint={pipStrokePaint} />
-          <Path path={pipPath} paint={pipHighlightPaint} />
-        </Group>
+        <Picture picture={basePicture} />
 
         {statusRingPaint ? (
           <Circle cx={center} cy={center} r={statusRingRadius} paint={statusRingPaint} />
-        ) : null}
-
-        {locked && badgeFillPaint && badgeStrokePaint ? (
-          <Group>
-            <Path path={badgeLayout.path} paint={badgeFillPaint} />
-            <Path path={badgeLayout.path} paint={badgeStrokePaint} />
-            <Text
-              x={badgeLayout.textX + size * 0.002}
-              y={badgeLayout.textY + size * 0.002}
-              text={LOCK_LABEL}
-              font={badgeFont}
-              color="rgba(255, 255, 255, 0.55)"
-            />
-            <Text
-              x={badgeLayout.textX}
-              y={badgeLayout.textY}
-              text={LOCK_LABEL}
-              font={badgeFont}
-              color="rgba(15, 23, 42, 0.95)"
-            />
-          </Group>
         ) : null}
       </Group>
     </Canvas>
   );
 };
+
+const IndexIndicator = React.memo(
+  IndexIndicatorComponent,
+  (prev, next) =>
+    prev.size === next.size &&
+    prev.tintColor === next.tintColor &&
+    prev.accentColor === next.accentColor &&
+    prev.locked === next.locked &&
+    prev.status === next.status,
+);
+
+IndexIndicator.displayName = "IndexIndicator";
+
+export { IndexIndicator };
 
 export default IndexIndicator;

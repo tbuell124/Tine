@@ -3,13 +3,11 @@ import {
   Canvas,
   Circle,
   Group,
-  Line,
   PaintStyle,
-  Path,
+  Picture,
   Skia,
   StrokeCap,
   StrokeJoin,
-  Text,
   TileMode,
   vec,
   type SkFont,
@@ -20,6 +18,7 @@ import {
 import { useSpecularHighlight } from "@hooks/useSpecularHighlight";
 
 import { createSpecularHighlightPaint } from "./shaders/specularHighlight";
+import { recordPicture } from "@utils/skia";
 
 export type InnerWheelProps = {
   /** Diameter of the wheel in logical pixels. */
@@ -106,7 +105,7 @@ const buildDiamondPath = (
   return path;
 };
 
-export const InnerWheel: React.FC<InnerWheelProps> = ({
+const InnerWheelComponent: React.FC<InnerWheelProps> = ({
   size = 220,
   rotation = 0,
   showDetentPegs = false,
@@ -208,57 +207,114 @@ export const InnerWheel: React.FC<InnerWheelProps> = ({
     });
   }, [center, labels, outerRadius, showDetentPegs, size]);
 
+  const staticPicture = useMemo(
+    () =>
+      recordPicture(size, size, (canvas) => {
+        canvas.drawCircle(center, center, outerRadius, brushPaint);
+        canvas.drawCircle(center, center, outerRadius, shadowPaint);
+
+        const majorTickPaint = Skia.Paint();
+        majorTickPaint.setStyle(PaintStyle.Stroke);
+        majorTickPaint.setStrokeWidth(size * 0.008);
+        majorTickPaint.setStrokeCap(StrokeCap.Round);
+        majorTickPaint.setColor(Skia.Color("rgba(0,0,0,0.55)"));
+        majorTickPaint.setAntiAlias(true);
+
+        const minorTickPaint = Skia.Paint();
+        minorTickPaint.setStyle(PaintStyle.Stroke);
+        minorTickPaint.setStrokeWidth(size * 0.0045);
+        minorTickPaint.setStrokeCap(StrokeCap.Round);
+        minorTickPaint.setColor(Skia.Color("rgba(0,0,0,0.32)"));
+        minorTickPaint.setAntiAlias(true);
+
+        tickData.forEach(({ outerPoint, innerPoint, isMajor }) => {
+          const paint = isMajor ? majorTickPaint : minorTickPaint;
+          canvas.drawLine(outerPoint.x, outerPoint.y, innerPoint.x, innerPoint.y, paint);
+        });
+
+        if (knurledPegData.length > 0) {
+          const pegPaint = Skia.Paint();
+          pegPaint.setStyle(PaintStyle.Stroke);
+          pegPaint.setStrokeWidth(size * 0.009);
+          pegPaint.setStrokeCap(StrokeCap.Round);
+          pegPaint.setColor(Skia.Color("rgba(255,255,255,0.28)"));
+          pegPaint.setAntiAlias(true);
+
+          knurledPegData.forEach(({ segments }) => {
+            segments.forEach(({ start, end }) => {
+              canvas.drawLine(start.x, start.y, end.x, end.y, pegPaint);
+            });
+          });
+        }
+
+        const labelShadowPaint = Skia.Paint();
+        labelShadowPaint.setColor(Skia.Color("rgba(255,255,255,0.25)"));
+        labelShadowPaint.setAntiAlias(true);
+
+        const labelPaint = Skia.Paint();
+        labelPaint.setColor(Skia.Color("rgba(0,0,0,0.7)"));
+        labelPaint.setAntiAlias(true);
+
+        labels.forEach(({ text, x, y }) => {
+          canvas.drawText(text, x + size * 0.002, y + size * 0.002, labelShadowPaint, font);
+          canvas.drawText(text, x, y, labelPaint, font);
+        });
+
+        const diamondFillPaint = Skia.Paint();
+        diamondFillPaint.setColor(Skia.Color("#0f172a"));
+        diamondFillPaint.setAntiAlias(true);
+
+        const diamondStrokePaint = Skia.Paint();
+        diamondStrokePaint.setStyle(PaintStyle.Stroke);
+        diamondStrokePaint.setStrokeWidth(size * 0.006);
+        diamondStrokePaint.setColor(Skia.Color("#ffffff"));
+        diamondStrokePaint.setAntiAlias(true);
+
+        canvas.drawPath(zeroDiamond, diamondFillPaint);
+        canvas.drawPath(zeroDiamond, diamondStrokePaint);
+
+        canvas.drawCircle(center, center, outerRadius, outerChamferPaint);
+        canvas.drawCircle(center, center, innerRadius, innerChamferPaint);
+      }),
+    [
+      size,
+      center,
+      outerRadius,
+      innerRadius,
+      brushPaint,
+      shadowPaint,
+      tickData,
+      knurledPegData,
+      labels,
+      font,
+      zeroDiamond,
+      outerChamferPaint,
+      innerChamferPaint,
+    ],
+  );
+
   return (
     <Canvas style={{ width: size, height: size }}>
       <Group origin={vec(center, center)} transform={[{ rotate: rotation }]}>
-        <Circle cx={center} cy={center} r={outerRadius} paint={brushPaint} />
-        <Circle cx={center} cy={center} r={outerRadius} paint={shadowPaint} />
-
-        {tickData.map(({ outerPoint, innerPoint, isMajor, cents }) => (
-          <Line
-            key={`tick-${cents}`}
-            p1={vec(outerPoint.x, outerPoint.y)}
-            p2={vec(innerPoint.x, innerPoint.y)}
-            strokeWidth={isMajor ? size * 0.008 : size * 0.0045}
-            color={isMajor ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.32)"}
-            cap={StrokeCap.Round}
-          />
-        ))}
-
-        {knurledPegData.map(({ key, segments }) => (
-          <React.Fragment key={`peg-${key}`}>
-            {segments.map(({ start, end }, index) => (
-              <Line
-                key={`peg-${key}-${index}`}
-                p1={vec(start.x, start.y)}
-                p2={vec(end.x, end.y)}
-                strokeWidth={size * 0.009}
-                color="rgba(255,255,255,0.28)"
-                cap={StrokeCap.Round}
-              />
-            ))}
-          </React.Fragment>
-        ))}
-
+        <Picture picture={staticPicture} />
         {specularHighlightPaint ? (
           <Circle cx={center} cy={center} r={outerRadius} paint={specularHighlightPaint} />
         ) : null}
-
-        <Circle cx={center} cy={center} r={outerRadius} paint={outerChamferPaint} />
-        <Circle cx={center} cy={center} r={innerRadius} paint={innerChamferPaint} />
-
-        {labels.map(({ text, x, y }) => (
-          <React.Fragment key={`label-${text}`}>
-            <Text x={x + size * 0.002} y={y + size * 0.002} text={text} font={font} color="rgba(255,255,255,0.25)" />
-            <Text x={x} y={y} text={text} font={font} color="rgba(0,0,0,0.7)" />
-          </React.Fragment>
-        ))}
-
-        <Path path={zeroDiamond} color="#0f172a" />
-        <Path path={zeroDiamond} color="#ffffff" style="stroke" strokeWidth={size * 0.006} />
       </Group>
     </Canvas>
   );
 };
+
+const InnerWheel = React.memo(
+  InnerWheelComponent,
+  (prev, next) =>
+    prev.size === next.size &&
+    prev.rotation === next.rotation &&
+    prev.showDetentPegs === next.showDetentPegs,
+);
+
+InnerWheel.displayName = "InnerWheel";
+
+export { InnerWheel };
 
 export default InnerWheel;

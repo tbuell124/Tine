@@ -56,8 +56,7 @@
             "newArchEnabled": true
           }
         }
-      ],
-      "react-native-reanimated/plugin"
+      ]
     ]
   }
 }

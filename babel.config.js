@@ -1,21 +1,9 @@
 module.exports = function (api) {
   api.cache(true);
+  const isMetro = api.caller(c => c && (c.name === 'metro' || c.name === 'babel-transformer'));
   return {
-    presets: ['babel-preset-expo'],
-    plugins: [
-      [
-        'module-resolver',
-        {
-          extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-          alias: {
-            '@components': './src/components',
-            '@hooks': './src/hooks',
-            '@native': './src/native',
-            '@utils': './src/utils'
-          }
-        }
-      ],
-      'react-native-reanimated/plugin'
-    ]
+    // Disable the preset’s auto-injection of reanimated:
+    presets: [['babel-preset-expo', { reanimated: false }]],
+    plugins: isMetro ? ['react-native-reanimated/plugin'] : [],
   };
 };

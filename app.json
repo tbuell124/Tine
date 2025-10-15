@@ -32,9 +32,6 @@
         "RECORD_AUDIO",
         "VIBRATE"
       ],
-      "newArchitecture": {
-        "enabled": true
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

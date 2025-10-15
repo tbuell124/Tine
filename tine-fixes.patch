@@ -1,0 +1,27 @@
+--- a/app.json+++ b/app.json@@ -59,4 +59,4 @@       ]
+     ]
+   }
+-}+}
+
+--- a/babel.config.js+++ b/babel.config.js@@ -2,8 +2,10 @@   api.cache(true);
+   const isMetro = api.caller(c => c && (c.name === 'metro' || c.name === 'babel-transformer'));
+   return {
+-    // Disable the preset’s auto-injection of reanimated:
+     presets: [['babel-preset-expo', { reanimated: false }]],
+-    plugins: isMetro ? ['react-native-reanimated/plugin'] : [],
++    plugins: [
++      ['module-resolver', {"root": ["."], "alias": {"@components": "./src/components", "@hooks": "./src/hooks", "@native": "./src/native", "@utils": "./src/utils", "@state": "./src/state"}}],
++      ...(isMetro ? ['react-native-reanimated/plugin'] : []),
++    ],
+   };
+ };
+
+--- a/package.json+++ b/package.json@@ -14,7 +14,8 @@     "lint:fix": "eslint . --ext .ts,.tsx --fix",
+     "format": "prettier --write .",
+     "format:check": "prettier --check .",
+-    "test": "jest"
++    "test": "jest",
++    "start:sim": "expo start --host=localhost"
+   },
+   "dependencies": {
+     "@react-native-async-storage/async-storage": "^1.23.1",

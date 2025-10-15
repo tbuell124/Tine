@@ -1,9 +1,10 @@
+// babel.config.js
 module.exports = function (api) {
-  api.cache(true);
-  const isMetro = api.caller(c => c && (c.name === 'metro' || c.name === 'babel-transformer'));
+  // Configure caching without blocking plugins that also use cache.using()
+  api.cache.using(() => process.env.NODE_ENV ?? 'development');
+
   return {
-    // Disable the preset’s auto-injection of reanimated:
-    presets: [['babel-preset-expo', { reanimated: false }]],
-    plugins: isMetro ? ['react-native-reanimated/plugin'] : [],
+    presets: ['babel-preset-expo'],
+    // No manual plugins; Expo will auto-inject Reanimated as needed.
   };
 };

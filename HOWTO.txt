@@ -1,0 +1,22 @@
+Tine quick fixes
+================
+
+This archive includes:
+- tine-fixes.patch : unified diff to apply to your repo root
+- assets/favicon.png : placeholder favicon referenced by app.json
+- HOWTO.txt : these instructions
+
+Apply the patch:
+  git apply tine-fixes.patch
+
+If you don't use git, manually:
+  1) Replace babel.config.js with the version in the patch (adds module-resolver and gates Reanimated to Metro).
+  2) Ensure app.json has "web.favicon": "./assets/favicon.png" and does NOT list "react-native-reanimated/plugin" under plugins.
+  3) Drop assets/favicon.png into your project's ./assets folder.
+  4) (Optional) Use "npm run start:sim" to launch Metro on localhost for the iOS Simulator.
+
+Then do:
+  rm -rf node_modules package-lock.json .expo
+  npm install
+  npx expo start -c --host=localhost
+  (press "i" to open iOS, or run: xcrun simctl openurl booted "exp://127.0.0.1:8081")

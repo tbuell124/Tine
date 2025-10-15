@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest"
+    "test": "jest",
+    "start:sim": "expo start -c --host=localhost"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.23.1",

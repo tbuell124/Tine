@@ -1,0 +1,208 @@
+2025-10-15T04:01:31.264Z expo:telemetry:detachedClient Event received: action
+Starting project at /Users/tylerbuell/Projects/Tine
+2025-10-15T04:01:31.459Z expo:env No environment variables loaded from .env files.
+2025-10-15T04:01:31.721Z expo:utils:fileNotifier Observing /Users/tylerbuell/Projects/Tine/babel.config.js
+2025-10-15T04:01:31.769Z expo:telemetry:detachedClient Event received: Start Project
+2025-10-15T04:01:31.911Z expo:start:server:devServer Stopping dev server (bundler: metro)
+2025-10-15T04:01:31.911Z expo:start:server:devServer Stopped dev server (bundler: metro)
+2025-10-15T04:01:31.949Z expo:start:server:metro:router Using app as the root directory for Expo Router.
+2025-10-15T04:01:32.049Z expo:doctor:apple:simulatorApp Simulator app id: com.apple.iphonesimulator
+2025-10-15T04:01:32.491Z expo:metro:config react-native-reanimated package.json: /Users/tylerbuell/Projects/Tine/node_modules/react-native-reanimated/package.json
+
+Expo Metro config:
+- Version: 0.18.11
+- Extensions: ts, tsx, mjs, js, jsx, json, cjs, scss, sass, css
+- React Native: /Users/tylerbuell/Projects/Tine/node_modules/react-native
+- Watch Folders: 
+- Node Module Paths: 
+- Env Files: .env.development.local,.env.local,.env.development,.env
+- Sass: null
+- Reanimated: 3.10.1
+
+2025-10-15T04:01:32.899Z expo:start:server:metro:multi-platform Enabling alias: react-native-vector-icons -> @expo/vector-icons
+2025-10-15T04:01:32.900Z expo:metro:withMetroResolvers Appending 5 custom resolvers to Metro config. (has custom resolver: false)
+2025-10-15T04:01:32.908Z expo:telemetry:detachedClient Event received: metro config
+2025-10-15T04:01:33.132Z expo:start:server:urlCreator URL: http://192.168.1.224:8081
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+2025-10-15T04:01:33.428Z expo:start:server:middleware:serveStatic Serving static files from: /Users/tylerbuell/Projects/Tine/public
+2025-10-15T04:01:33.428Z expo:start:server:urlCreator URL: exp://127.0.0.1:8081
+2025-10-15T04:01:33.477Z expo:start:server:developmentSession Development session will not ping because the user is not authenticated and there are no devices.
+2025-10-15T04:01:33.479Z expo:start:server:metro:waitForTypescript Watching file changes: [
+  '/Users/tylerbuell/Projects/Tine/.env.development.local',
+  '/Users/tylerbuell/Projects/Tine/.env.local',
+  '/Users/tylerbuell/Projects/Tine/.env.development',
+  '/Users/tylerbuell/Projects/Tine/.env'
+]
+2025-10-15T04:01:33.480Z expo:doctor:typescriptSupport Ensuring TypeScript support is setup
+2025-10-15T04:01:33.513Z expo:doctor:dependencies:getMissingPackages Required package "typescript" found (no version constraint specified).
+2025-10-15T04:01:33.514Z expo:doctor:dependencies:getMissingPackages Required package "@types/react" found (no version constraint specified).
+2025-10-15T04:01:33.535Z expo:typed-routes Removing typed routes side-effects (experiments.typedRoutes: false)
+2025-10-15T04:01:33.539Z expo:doctor:dependencies:bundledNativeModules Fetching bundled native modules from the server...
+2025-10-15T04:01:35.101Z expo:doctor:dependencies:validate Checking dependencies for 51.0.0: {
+  '@react-native-async-storage/async-storage': '^1.23.1',
+  '@react-native-community/slider': '^4.4.3',
+  '@shopify/react-native-skia': '1.3.8',
+  expo: '~51.0.14',
+  'expo-haptics': '~12.8.1',
+  'expo-sensors': '~13.0.0',
+  'expo-status-bar': '~1.12.1',
+  react: '18.2.0',
+  'react-dom': '18.2.0',
+  'react-native': '0.74.3',
+  'react-native-gesture-handler': '~2.16.1',
+  'react-native-reanimated': '3.10.1',
+  'react-native-safe-area-context': '4.10.1',
+  'react-native-screens': '~3.32.0',
+  'react-native-web': '~0.19.10',
+  '@babel/core': '^7.23.3',
+  '@testing-library/jest-native': "@testing-library/jest-native@5.0.0 '5.0.0'\n" +
+    "@testing-library/jest-native@5.1.0 '5.1.0'\n" +
+    "@testing-library/jest-native@5.1.1 '5.1.1'\n" +
+    "@testing-library/jest-native@5.1.2 '5.1.2'\n" +
+    "@testing-library/jest-native@5.2.0 '5.2.0'\n" +
+    "@testing-library/jest-native@5.3.0 '5.3.0'\n" +
+    "@testing-library/jest-native@5.3.1 '5.3.1'\n" +
+    "@testing-library/jest-native@5.3.2 '5.3.2'\n" +
+    "@testing-library/jest-native@5.3.3 '5.3.3'\n" +
+    "@testing-library/jest-native@5.3.4 '5.3.4'\n" +
+    "@testing-library/jest-native@5.4.0 '5.4.0'\n" +
+    "@testing-library/jest-native@5.4.1 '5.4.1'\n" +
+    "@testing-library/jest-native@5.4.2 '5.4.2'\n" +
+    "@testing-library/jest-native@5.4.3 '5.4.3'",
+  '@testing-library/react-native': '^12.6.1',
+  '@types/jest': '^29.5.12',
+  '@types/react': '~18.2.45',
+  '@types/react-native': '^0.73.0',
+  'babel-plugin-module-resolver': '^5.0.0',
+  eslint: '^8.57.0',
+  'eslint-config-prettier': '^9.1.0',
+  'eslint-config-universe': '^12.1.0',
+  'eslint-plugin-prettier': '^5.1.3',
+  'expo-build-properties': '^0.12.5',
+  jest: '^29.7.0',
+  prettier: '^3.3.2',
+  'react-test-renderer': '18.2.0',
+  'ts-jest': '^29.2.5',
+  typescript: '^5.3.3'
+}
+2025-10-15T04:01:35.101Z expo:doctor:dependencies:validate Comparing known versions: [
+  '@react-native-async-storage/async-storage',
+  '@react-native-community/slider',
+  '@shopify/react-native-skia',
+  'expo',
+  'expo-haptics',
+  'expo-sensors',
+  'expo-status-bar',
+  'react',
+  'react-dom',
+  'react-native',
+  'react-native-gesture-handler',
+  'react-native-reanimated',
+  'react-native-safe-area-context',
+  'react-native-screens',
+  'react-native-web',
+  '@babel/core',
+  '@types/react',
+  'expo-build-properties',
+  'jest',
+  'typescript'
+]
+2025-10-15T04:01:35.101Z expo:doctor:dependencies:validate Skipping packages that cannot be versioned automatically: [
+  '@testing-library/jest-native',
+  '@testing-library/react-native',
+  '@types/jest',
+  '@types/react-native',
+  'babel-plugin-module-resolver',
+  'eslint',
+  'eslint-config-prettier',
+  'eslint-config-universe',
+  'eslint-plugin-prettier',
+  'prettier',
+  'react-test-renderer',
+  'ts-jest'
+]
+2025-10-15T04:01:35.121Z expo:doctor:dependencies:validate Package versions: {
+  '@react-native-async-storage/async-storage': '1.24.0',
+  '@react-native-community/slider': '4.5.7',
+  '@shopify/react-native-skia': '1.3.8',
+  expo: '51.0.39',
+  'expo-haptics': '12.8.1',
+  'expo-sensors': '13.0.9',
+  'expo-status-bar': '1.12.1',
+  react: '18.2.0',
+  'react-dom': '18.2.0',
+  'react-native': '0.74.3',
+  'react-native-gesture-handler': '2.16.2',
+  'react-native-reanimated': '3.10.1',
+  'react-native-safe-area-context': '4.10.1',
+  'react-native-screens': '3.32.0',
+  'react-native-web': '0.19.13',
+  '@babel/core': '7.28.4',
+  '@types/react': '18.2.79',
+  'expo-build-properties': '0.12.5',
+  jest: '29.7.0',
+  typescript: '5.9.3'
+}
+2025-10-15T04:01:35.126Z expo:doctor:dependencies:validate Incorrect dependencies: [
+  {
+    packageName: '@react-native-async-storage/async-storage',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '1.23.1',
+    actualVersion: '1.24.0'
+  },
+  {
+    packageName: '@react-native-community/slider',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '4.5.2',
+    actualVersion: '4.5.7'
+  },
+  {
+    packageName: '@shopify/react-native-skia',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '1.2.3',
+    actualVersion: '1.3.8'
+  },
+  {
+    packageName: 'expo-haptics',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '~13.0.1',
+    actualVersion: '12.8.1'
+  },
+  {
+    packageName: 'react-native',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '0.74.5',
+    actualVersion: '0.74.3'
+  },
+  {
+    packageName: 'react-native-safe-area-context',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '4.10.5',
+    actualVersion: '4.10.1'
+  },
+  {
+    packageName: 'react-native-screens',
+    packageType: 'dependencies',
+    expectedVersionOrRange: '3.31.1',
+    actualVersion: '3.32.0'
+  },
+  {
+    packageName: 'typescript',
+    packageType: 'devDependencies',
+    expectedVersionOrRange: '~5.3.3',
+    actualVersion: '5.9.3'
+  }
+]
+The following packages should be updated for best compatibility with the installed expo version:
+  @react-native-async-storage/async-storage@1.24.0 - expected version: 1.23.1
+  @react-native-community/slider@4.5.7 - expected version: 4.5.2
+  @shopify/react-native-skia@1.3.8 - expected version: 1.2.3
+  expo-haptics@12.8.1 - expected version: ~13.0.1
+  react-native@0.74.3 - expected version: 0.74.5
+  react-native-safe-area-context@4.10.1 - expected version: 4.10.5
+  react-native-screens@3.32.0 - expected version: 3.31.1
+  typescript@5.9.3 - expected version: ~5.3.3
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.

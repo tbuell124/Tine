@@ -87,18 +87,18 @@ export const createSpecularHighlightPaint = (
     return null;
   }
 
-  const shader = effect.makeShaderWithChildren(
-    {
-      u_center: uniforms.center,
-      u_innerRadius: uniforms.innerRadius,
-      u_outerRadius: uniforms.outerRadius,
-      u_highlightAngle: uniforms.highlightAngle,
-      u_arcWidth: uniforms.arcWidth,
-      u_intensity: uniforms.intensity,
-      u_noiseScale: uniforms.noiseScale,
-    },
-    [],
-  );
+  const uniformArray = new Float32Array([
+    uniforms.center[0],
+    uniforms.center[1],
+    uniforms.innerRadius,
+    uniforms.outerRadius,
+    uniforms.highlightAngle,
+    uniforms.arcWidth,
+    uniforms.intensity,
+    uniforms.noiseScale,
+  ]);
+
+  const shader = effect.makeShaderWithChildren(uniformArray, []);
 
   if (!shader) {
     return null;

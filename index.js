@@ -1,6 +1,6 @@
 import { registerRootComponent } from 'expo';
-import { Text, View } from 'react-native';
-function App() {
-  return <View style={{flex:1,alignItems:'center',justifyContent:'center'}}><Text>Tine ✅ Minimal</Text></View>;
-}
+
+import App from './App';
+
+// Register the main App component (written in TypeScript) so Expo can boot the full tuner interface.
 registerRootComponent(App);

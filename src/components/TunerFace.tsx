@@ -366,53 +366,30 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     dwellTimeMs: settings.lockDwellTime * 1000,
   });
 
-  const noteLabel = React.useMemo(() => {
+  const noteDisplay = React.useMemo(() => {
+    const formatStem = (note: string): string => {
+      const match = note.match(/^([A-G])([#b]?)/i);
+      if (!match) {
+        return note;
+      }
+
+      const [, letter, accidental] = match;
+      const accidentalSymbol = accidental === "#" ? "♯" : accidental === "b" ? "♭" : "";
+      return `${letter.toUpperCase()}${accidentalSymbol}`;
+    };
+
     if (pitch.midi === null) {
-      return "—";
+      return { primary: "—", alternate: null };
     }
 
     const enharmonic = midiToEnharmonicNames(pitch.midi);
+    const preferred = pitch.noteName ?? enharmonic.sharp;
+    const primary = formatStem(preferred);
+    const alternateCandidate = formatStem(enharmonic.flat);
+    const alternate = alternateCandidate !== primary ? alternateCandidate : null;
 
-    const parseNote = (note: string) => {
-      const match = note.match(/^([A-G])(#|b)?(\d+)$/);
-      if (!match) {
-        return { stem: note, octave: "" };
-      }
-
-      const [, letter, accidental, octave] = match;
-      const accidentalSymbol = accidental === "#" ? "♯" : accidental === "b" ? "♭" : "";
-
-      return {
-        stem: `${letter}${accidentalSymbol}`,
-        octave,
-      };
-    };
-
-    const sharp = parseNote(enharmonic.sharp);
-    const flat = parseNote(enharmonic.flat);
-
-    if (sharp.stem === flat.stem && sharp.octave === flat.octave) {
-      return `${sharp.stem}${sharp.octave}`;
-    }
-
-    if (sharp.octave === flat.octave) {
-      return `${sharp.stem}/${flat.stem}${flat.octave}`;
-    }
-
-    return `${sharp.stem}${sharp.octave}/${flat.stem}${flat.octave}`;
-  }, [pitch.midi]);
-
-  const centsLabel = React.useMemo(() => {
-    if (!Number.isFinite(pitch.cents)) {
-      return "0¢";
-    }
-
-    const rounded =
-      Math.abs(pitch.cents) < 10 ? pitch.cents.toFixed(1) : Math.round(pitch.cents).toString();
-    const prefix = pitch.cents > 0 ? "+" : pitch.cents < 0 ? "−" : "";
-    const magnitude = rounded.replace(/^[-+]/, "");
-    return `${prefix}${magnitude}¢`;
-  }, [pitch.cents]);
+    return { primary, alternate };
+  }, [pitch.midi, pitch.noteName]);
 
   const manualNoteLabel = React.useMemo(() => {
     if (pitch.noteName) {
@@ -456,22 +433,21 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
         />
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <View style={styles.hudContainer}>
-          <View style={styles.hudContent}>
-            {settings.manualMode ? (
-              <View style={styles.manualPill} accessibilityRole="text">
-                <Text style={styles.manualPillText}>{`Manual ${manualNoteLabel}`}</Text>
-              </View>
-            ) : null}
-            <Text style={styles.noteLabel} accessibilityRole="text">
-              {noteLabel}
+        <View style={styles.centerOverlay}>
+          {settings.manualMode ? (
+            <Text style={styles.manualLabel} accessibilityRole="text">{`Manual ${manualNoteLabel}`}</Text>
+          ) : null}
+          <Text
+            style={[styles.noteGlyph, locked ? { color: indicatorAccent } : null]}
+            accessibilityRole="text"
+          >
+            {noteDisplay.primary}
+          </Text>
+          {noteDisplay.alternate ? (
+            <Text style={styles.alternateLabel} accessibilityRole="text">
+              {noteDisplay.alternate}
             </Text>
-            {settings.manualMode ? null : (
-              <Text style={styles.centsLabel} accessibilityRole="text">
-                {centsLabel}
-              </Text>
-            )}
-          </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -487,50 +463,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  hudContainer: {
+  centerOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
     alignItems: "center",
-    paddingBottom: 24,
+    justifyContent: "center",
+    paddingBottom: 16,
   },
-  hudContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  manualLabel: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(15, 23, 42, 0.92)",
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.6)",
-    alignItems: "center",
-  },
-  manualPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(30, 58, 138, 0.65)",
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.35)",
-    marginBottom: 6,
-  },
-  manualPillText: {
+    borderColor: "rgba(148, 163, 184, 0.45)",
     color: "#dbeafe",
     fontSize: 12,
     fontWeight: "600",
-    letterSpacing: 0.25,
+    letterSpacing: 0.4,
   },
-  noteLabel: {
+  noteGlyph: {
     color: "#f8fafc",
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.5,
+    fontSize: 88,
+    fontWeight: "800",
+    letterSpacing: 4,
   },
-  centsLabel: {
-    marginTop: 4,
-    color: "#cbd5f5",
-    fontSize: 14,
+  alternateLabel: {
+    marginTop: 8,
+    color: "#94a3b8",
+    fontSize: 18,
+    letterSpacing: 2,
     fontWeight: "600",
-    textAlign: "center",
-    letterSpacing: 0.25,
   },
 });
 

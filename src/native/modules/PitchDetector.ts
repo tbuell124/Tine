@@ -22,9 +22,46 @@ const nativeModuleForEvents = (() => {
   return undefined;
 })();
 
-const eventEmitter = new NativeEventEmitter(nativeModuleForEvents as any);
-
 type Listener = (event: PitchEvent) => void;
+
+type InternalEmitter = {
+  addListener: (eventName: string, listener: Listener) => {
+    remove: () => void;
+  };
+  removeAllListeners: (eventName: string) => void;
+};
+
+const createFallbackEmitter = (): InternalEmitter => {
+  const listenerMap = new Map<string, Set<Listener>>();
+
+  return {
+    addListener(eventName, listener) {
+      const listeners = listenerMap.get(eventName) ?? new Set<Listener>();
+      listeners.add(listener);
+      listenerMap.set(eventName, listeners);
+
+      return {
+        remove: () => {
+          const current = listenerMap.get(eventName);
+          if (!current) {
+            return;
+          }
+          current.delete(listener);
+          if (current.size === 0) {
+            listenerMap.delete(eventName);
+          }
+        },
+      };
+    },
+    removeAllListeners(eventName) {
+      listenerMap.delete(eventName);
+    },
+  };
+};
+
+const eventEmitter: InternalEmitter = nativeModuleForEvents
+  ? new NativeEventEmitter(nativeModuleForEvents as any)
+  : createFallbackEmitter();
 
 type Subscription = {
   remove: () => void;

@@ -87,7 +87,7 @@ export const createSpecularHighlightPaint = (
     return null;
   }
 
-  const uniformArray = new Float32Array([
+  const uniformValues = [
     uniforms.center[0],
     uniforms.center[1],
     uniforms.innerRadius,
@@ -96,9 +96,9 @@ export const createSpecularHighlightPaint = (
     uniforms.arcWidth,
     uniforms.intensity,
     uniforms.noiseScale,
-  ]);
+  ];
 
-  const shader = effect.makeShaderWithChildren(uniformArray, []);
+  const shader = effect.makeShaderWithChildren(uniformValues, []);
 
   if (!shader) {
     return null;

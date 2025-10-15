@@ -7,9 +7,22 @@ import PitchDetectorModule, {
   type StartResult,
 } from './specs/PitchDetectorNativeModule';
 
-const eventEmitter = new NativeEventEmitter(
-  NativeModules.PitchDetector ?? (PitchDetectorModule as any),
-);
+const nativeModuleForEvents = (() => {
+  const candidate =
+    NativeModules.PitchDetector ?? (PitchDetectorModule as unknown as Record<string, unknown>);
+
+  if (
+    candidate &&
+    typeof (candidate as any).addListener === 'function' &&
+    typeof (candidate as any).removeListeners === 'function'
+  ) {
+    return candidate as Record<string, unknown>;
+  }
+
+  return undefined;
+})();
+
+const eventEmitter = new NativeEventEmitter(nativeModuleForEvents as any);
 
 type Listener = (event: PitchEvent) => void;
 

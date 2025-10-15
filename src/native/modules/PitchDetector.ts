@@ -1,4 +1,4 @@
-import {NativeEventEmitter, NativeModules} from 'react-native';
+import {NativeEventEmitter, NativeModules, Platform} from 'react-native';
 
 import PitchDetectorModule, {
   PITCH_EVENT_NAME,
@@ -22,7 +22,44 @@ const nativeModuleForEvents = (() => {
   return undefined;
 })();
 
-const eventEmitter = new NativeEventEmitter(nativeModuleForEvents as any);
+type EventSubscription = { remove: () => void };
+
+type PitchEventEmitter = {
+  addListener: (eventName: string, listener: Listener) => EventSubscription;
+  removeAllListeners: (eventName: string) => void;
+};
+
+const createFallbackEmitter = (): PitchEventEmitter => {
+  const listeners = new Set<Listener>();
+
+  return {
+    addListener: (_eventName, listener) => {
+      listeners.add(listener);
+      return {
+        remove: () => {
+          listeners.delete(listener);
+        },
+      };
+    },
+    removeAllListeners: () => {
+      listeners.clear();
+    },
+  };
+};
+
+const eventEmitter: PitchEventEmitter = (() => {
+  if (nativeModuleForEvents) {
+    return new NativeEventEmitter(nativeModuleForEvents as any);
+  }
+
+  if (Platform.OS === 'ios') {
+    console.warn(
+      'PitchDetector native module is unavailable. Event listeners will be no-ops on iOS simulators and Expo Go.',
+    );
+  }
+
+  return createFallbackEmitter();
+})();
 
 type Listener = (event: PitchEvent) => void;
 

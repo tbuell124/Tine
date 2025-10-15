@@ -1,5 +1,5 @@
 import React from 'react';
-import { SkiaMutableValue, useValue } from '@shopify/react-native-skia';
+import { SharedValue, useSharedValue } from 'react-native-reanimated';
 
 export type CircleCenter = {
   x: number;
@@ -7,8 +7,8 @@ export type CircleCenter = {
 };
 
 export type SkiaCircle = {
-  x: SkiaMutableValue<number>;
-  y: SkiaMutableValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
   update: (next: CircleCenter) => void;
 };
 
@@ -17,13 +17,13 @@ export type SkiaCircle = {
  * Extracting this logic keeps rendering components focused purely on layout concerns.
  */
 export const useSkiaCircle = (initial: CircleCenter): SkiaCircle => {
-  const x = useValue(initial.x);
-  const y = useValue(initial.y);
+  const x = useSharedValue(initial.x);
+  const y = useSharedValue(initial.y);
 
   const update = React.useCallback(
     (next: CircleCenter) => {
-      x.current = next.x;
-      y.current = next.y;
+      x.value = next.x;
+      y.value = next.y;
     },
     [x, y]
   );

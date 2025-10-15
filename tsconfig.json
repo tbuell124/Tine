@@ -6,6 +6,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "types": ["jest", "@testing-library/jest-native"],
     "paths": {
       "@components/*": [
         "src/components/*"

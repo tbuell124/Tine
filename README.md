@@ -48,7 +48,7 @@ Follow this checklist before cloning the project. macOS steps are listed first b
 
 | Tool | Recommended version | Install instructions |
 | --- | --- | --- |
-| Node.js | 20 LTS (20.15 at the time of writing) | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) and run `nvm install 20 && nvm use 20`. Expo 51 does **not** support Node 22+ yet. |
+| Node.js | 20 LTS or 22 LTS | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) and run `nvm install 20 && nvm use 20` (or `nvm install 22 && nvm use 22`). Expo SDK 54 officially supports the current LTS releases. |
 | npm | Bundled with Node | No separate installation required. |
 | Yarn (optional) | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable`. Avoid `npm install --global yarn` if `/usr/local/bin/yarn` already exists. |
 | Git | 2.39+ | `git --version` should report a version. Install via [git-scm.com](https://git-scm.com/downloads) if needed. |
@@ -69,14 +69,15 @@ If you use SSH keys with GitHub, substitute the HTTPS URL with `git@github.com:t
 
 ## Install dependencies
 
-Tine uses Expo 51 with React Native 0.74. Install JavaScript dependencies using npm (recommended) or Yarn.
+Tine now targets Expo SDK 54 with React Native 0.82 and React 19. Install JavaScript dependencies using npm (recommended) or Yarn.
 
 ### Using npm
 
 ```bash
-# Ensure you are using Node 20 LTS
+# Ensure you are using Node 20 or 22 LTS
 node --version
 npm install
+npx pod-install ios
 ```
 
 ### Using Yarn 4 (via Corepack)
@@ -84,16 +85,10 @@ npm install
 ```bash
 corepack enable
 yarn install
+npx pod-install ios
 ```
 
-If the install fails with `@shopify/react-native-skia` not found, synchronize the package version with Expo’s recommendations:
-
-1. Check available versions: `npm view @shopify/react-native-skia versions --json | tail`.
-2. Install a published version compatible with Expo 51, for example:
-   ```bash
-   npx expo install @shopify/react-native-skia@0.1.266
-   ```
-3. Re-run `npm install` or `yarn install`.
+If the install fails with a 403 from the npm registry inside a restricted network, fetch packages from an allowed mirror or retry on a network with npm access. Skia 2.x requires React 19+, so ensure the updated peer dependencies resolve cleanly before retrying.
 
 > **Tip:** Delete `node_modules` and `package-lock.json` (or `yarn.lock`) before retrying if the resolver becomes stuck.
 
@@ -161,9 +156,9 @@ Each guide covers credential setup, build tooling, store submissions, and post-r
 
 | Symptom | Fix |
 | --- | --- |
-| **`@shopify/react-native-skia@0.1.243` unavailable** | Use `npx expo install @shopify/react-native-skia@<published-version>` after verifying available versions with `npm view`. Expo SDK 51 works with 0.1.26x releases. |
-| **`ConfigError: Cannot determine the project's Expo SDK version because the module expo is not installed`** | Ensure `npm install` succeeds. This error is a side effect of the Skia resolver failure; fix Skia first, then reinstall. |
-| **`expo-cli` Node compatibility warning** | Use the local CLI (`npx expo ...`) and downgrade to Node 20 LTS. Node 22+ is not supported by legacy `expo-cli`. |
+| **Peer dependency conflicts after updating** | Run `npm install --legacy-peer-deps` only as a last resort. Prefer resolving conflicts by aligning versions with Expo SDK 54 compatibility tables. |
+| **`ConfigError: Cannot determine the project's Expo SDK version because the module expo is not installed`** | Ensure `npm install` succeeds. This error is usually triggered when npm cannot reach the registry; fix connectivity and reinstall. |
+| **`expo-cli` Node compatibility warning** | Use the local CLI (`npx expo ...`) with Node 20 or 22. Remove any legacy global `expo-cli` installations that expect Node 16. |
 | **Yarn global install `EEXIST` errors** | Yarn was previously installed. Remove `/usr/local/bin/yarn*` or use Homebrew/Corepack instead of `npm install --global yarn`. |
 | **App Store blocks Xcode downloads** | Download the `.xip` installer from the Apple Developer website, or sign out/in of the App Store, clear the App Store cache (`open -a App\ Store --args -reset`), and retry. |
 | **Need to reset Xcode without full reinstall** | Delete Derived Data (`rm -rf ~/Library/Developer/Xcode/DerivedData`), clear simulators (`xcrun simctl delete unavailable`), reset command-line tools (`sudo xcode-select --reset`), and optionally remove cached downloads (`rm -rf ~/Library/Caches/com.apple.dt.Xcode`). |

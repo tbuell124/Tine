@@ -10,10 +10,10 @@ This guide walks through preparing, building, and shipping the Android version o
 | --- | --- | --- |
 | Google Play Console | Active developer account ($25 one-time). | Access [play.google.com/console](https://play.google.com/console) with the publishing Google account. |
 | macOS or Windows | Android Studio Hedgehog or newer installed. | `android-studio --version` (macOS) or check **About Android Studio**. |
-| Node.js | 20 LTS (`nvm install 20 && nvm use 20`). | `node --version` |
+| Node.js | 20 LTS or 22 LTS. | `node --version` |
 | npm / Yarn | npm 10+ (bundled) or Yarn 4 via Corepack. | `npm --version` or `yarn --version` |
 | Java | OpenJDK 17 (bundled with Android Studio). | `java -version` |
-| Android SDK | Platforms 33 & 34, Build-Tools 34.0.0, Platform-Tools latest. | Android Studio ▸ **Settings ▸ Appearance & Behavior ▸ System Settings ▸ Android SDK** |
+| Android SDK | Platforms 34 & 35, Build-Tools 35.0.0, Platform-Tools latest. | Android Studio ▸ **Settings ▸ Appearance & Behavior ▸ System Settings ▸ Android SDK** |
 | Android NDK | r26c (required for native audio modules). | Android Studio SDK Manager → **SDK Tools** (check “Show Package Details”). |
 | Expo account | Needed for EAS Build (optional). | `npx expo login` |
 
@@ -21,7 +21,7 @@ This guide walks through preparing, building, and shipping the Android version o
 
 - Use Android Studio’s **Device Manager** to create at least one emulator (Pixel 6, API 34) for smoke tests.
 - On Apple Silicon, install both ARM and Intel system images if you rely on x86-based emulators and enable Rosetta (`softwareupdate --install-rosetta`).
-- If `npm install` fails because `@shopify/react-native-skia@0.1.243` is missing, align the version using `npx expo install @shopify/react-native-skia@0.1.266` and rerun the install.
+- If `npm install` fails due to registry access issues, connect to an unfiltered network or configure an internal npm proxy. React 19 and Skia 2.x dependencies are already aligned in `package.json`.
 
 ---
 
@@ -32,10 +32,13 @@ This guide walks through preparing, building, and shipping the Android version o
    git clone https://github.com/tylerbuell/Tine.git
    cd Tine
    ```
-2. **Select Node 20 LTS**:
+2. **Select a supported Node LTS (20 or 22)**:
    ```bash
    nvm install 20
    nvm use 20
+   # or
+   nvm install 22
+   nvm use 22
    ```
 3. **Install dependencies**:
    ```bash

@@ -5,6 +5,21 @@ module.exports = function (api) {
 
   return {
     presets: ['babel-preset-expo'],
-    // No manual plugins; Expo will auto-inject Reanimated as needed.
+    plugins: [
+      [
+        'module-resolver',
+        {
+          root: ['.'],
+          alias: {
+            '@components': './src/components',
+            '@hooks': './src/hooks',
+            '@native': './src/native',
+            '@utils': './src/utils',
+            '@state': './src/state',
+          },
+        },
+      ],
+      'react-native-reanimated/plugin',
+    ],
   };
 };

@@ -12,7 +12,7 @@ This document is a comprehensive, end-to-end playbook for shipping the iOS versi
 | macOS | macOS 13.6 Ventura or newer. Xcode 15 requires at least macOS 13.5. | `sw_vers` |
 | Xcode | Version 15.x installed in `/Applications`. | Launch Xcode → **Xcode ▸ About Xcode** |
 | Command Line Tools | Installed via Xcode preferences. | `xcode-select -p` |
-| Node.js | 20 LTS (`20.15.x` preferred). | `node --version` |
+| Node.js | 20 LTS or 22 LTS. | `node --version` |
 | npm / Yarn | npm 10+ (bundled) or Yarn 4 via Corepack. | `npm --version` or `yarn --version` |
 | CocoaPods | 1.15+. | `pod --version` |
 | Expo account | Free Expo account for EAS services. | `npx expo login` |
@@ -51,20 +51,20 @@ Restart Xcode after running the commands. Reopen your simulator list to regenera
    git clone https://github.com/tylerbuell/Tine.git
    cd Tine
    ```
-2. **Use Node 20 LTS**:
+2. **Use a supported Node LTS (20 or 22)**:
    ```bash
    nvm install 20
    nvm use 20
+   # or
+   nvm install 22
+   nvm use 22
    ```
 3. **Install dependencies**:
    ```bash
    npm install
+   npx pod-install ios
    ```
-   If installation fails because `@shopify/react-native-skia@0.1.243` is missing, run:
-   ```bash
-   npx expo install @shopify/react-native-skia@0.1.266
-   npm install
-   ```
+   If installation fails because the npm registry is blocked, switch to a network with registry access or configure an internal mirror. Skia 2.x requires React 19+, which is already declared in `package.json`.
 4. **Sign in to Expo** (required for EAS Build):
    ```bash
    npx expo login

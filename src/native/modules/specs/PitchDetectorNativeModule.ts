@@ -44,13 +44,23 @@ export interface Spec extends TurboModule {
 export const LINKING_ERROR =
   `The native module "PitchDetector" is not properly linked. Make sure you have run pod install` +
   (Platform.OS === 'ios' ? ' and rebuilt the iOS project.' : '.') +
-  ' If you are using Expo Go this module will not be available.';
+  ' If you are using Expo Go this module will not be available. Build a custom dev client to load the detector.';
 
 const isTurboModuleEnabled = (globalThis as any).__turboModuleProxy != null;
 
-const moduleImpl: Spec | null = isTurboModuleEnabled
-  ? TurboModuleRegistry.getEnforcing<Spec>('PitchDetector')
-  : (NativeModules.PitchDetector as Spec | null);
+let moduleImpl: Spec | null = null;
+
+if (isTurboModuleEnabled) {
+  try {
+    moduleImpl = TurboModuleRegistry.get<Spec>('PitchDetector');
+  } catch (error) {
+    moduleImpl = null;
+  }
+}
+
+if (!moduleImpl) {
+  moduleImpl = (NativeModules.PitchDetector as Spec | null) ?? null;
+}
 
 const shouldLogWarnings =
   typeof process === 'undefined' ? true : process.env.NODE_ENV !== 'production';

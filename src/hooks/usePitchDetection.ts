@@ -76,8 +76,8 @@ export function usePitchDetection(): PitchDetectionStatus {
       const result = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
         {
-          title: 'Allow TunePlay to use the microphone',
-          message: 'TunePlay needs microphone access to analyse your instrument in real time.',
+          title: 'Allow Tine to use the microphone',
+          message: 'Tine needs microphone access to analyse your instrument in real time.',
           buttonPositive: 'Allow',
           buttonNegative: 'Deny'
         }

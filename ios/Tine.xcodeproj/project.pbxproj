@@ -13,6 +13,8 @@
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		5E9F2F81296D643AE8DE1DFC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 937995FC9032A987B2BE2C6C /* PrivacyInfo.xcprivacy */; };
 		96905EF65AED1B983A6B3ABC /* libPods-Tine.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-Tine.a */; };
+		9BF4F6A52C77F6A500DE69D1 /* PitchDetectorModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9BF4F6A32C77F6A500DE69D1 /* PitchDetectorModule.mm */; };
+		9BF4F6A62C77F6A500DE69D1 /* YinPitchDetector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9BF4F6A42C77F6A500DE69D1 /* YinPitchDetector.cpp */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 /* End PBXBuildFile section */
@@ -29,6 +31,11 @@
 		7A4D352CD337FB3A3BF06240 /* Pods-Tine.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Tine.release.xcconfig"; path = "Target Support Files/Pods-Tine/Pods-Tine.release.xcconfig"; sourceTree = "<group>"; };
 		937995FC9032A987B2BE2C6C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Tine/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Tine/SplashScreen.storyboard; sourceTree = "<group>"; };
+		9BF4F6A12C77F6A500DE69D1 /* PitchDetectorModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PitchDetectorModule.h; path = Tine/PitchDetectorModule.h; sourceTree = "<group>"; };
+		9BF4F6A32C77F6A500DE69D1 /* PitchDetectorModule.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = PitchDetectorModule.mm; path = Tine/PitchDetectorModule.mm; sourceTree = "<group>"; };
+		9BF4F6A42C77F6A500DE69D1 /* YinPitchDetector.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = YinPitchDetector.cpp; path = ../native/cpp/YinPitchDetector.cpp; sourceTree = "<group>"; };
+		9BF4F6A72C77F6A500DE69D1 /* YinPitchDetector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = YinPitchDetector.hpp; path = ../native/cpp/YinPitchDetector.hpp; sourceTree = "<group>"; };
+		9BF4F6A82C77F6A500DE69D1 /* FloatRingBuffer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FloatRingBuffer.hpp; path = ../native/cpp/FloatRingBuffer.hpp; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Tine/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -50,6 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				BB2F792B24A3F905000567C9 /* Supporting */,
+				9BF4F6AA2C77F6A500DE69D1 /* NativeAudio */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -106,6 +114,18 @@
 				FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */,
 			);
 			name = Tine;
+			sourceTree = "<group>";
+		};
+		9BF4F6AA2C77F6A500DE69D1 /* NativeAudio */ = {
+			isa = PBXGroup;
+			children = (
+				9BF4F6A12C77F6A500DE69D1 /* PitchDetectorModule.h */,
+				9BF4F6A32C77F6A500DE69D1 /* PitchDetectorModule.mm */,
+				9BF4F6A42C77F6A500DE69D1 /* YinPitchDetector.cpp */,
+				9BF4F6A72C77F6A500DE69D1 /* YinPitchDetector.hpp */,
+				9BF4F6A82C77F6A500DE69D1 /* FloatRingBuffer.hpp */,
+			);
+			name = NativeAudio;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -312,6 +332,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9BF4F6A52C77F6A500DE69D1 /* PitchDetectorModule.mm in Sources */,
+				9BF4F6A62C77F6A500DE69D1 /* YinPitchDetector.cpp in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,

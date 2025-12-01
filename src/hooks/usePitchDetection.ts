@@ -18,6 +18,7 @@ import {
   isPitchDetectorModuleAvailable,
   type PitchEvent
 } from '@native/modules/specs/PitchDetectorNativeModule';
+import { useNotifications } from '@state/NotificationContext';
 
 export type PermissionState = 'unknown' | 'granted' | 'denied';
 
@@ -55,6 +56,7 @@ const midiToOuterDegrees = (midi: number): number => {
 
 export function usePitchDetection(): PitchDetectionStatus {
   const { state, actions } = useTuner();
+  const { showNotification } = useNotifications();
   const availability = isPitchDetectorModuleAvailable;
   const [permission, setPermission] = React.useState<PermissionState>(
     Platform.OS === 'android' ? 'unknown' : 'granted'
@@ -88,13 +90,27 @@ export function usePitchDetection(): PitchDetectionStatus {
       );
       const granted = result === PermissionsAndroid.RESULTS.GRANTED;
       setPermission(granted ? 'granted' : 'denied');
+      if (!granted) {
+        showNotification({
+          message:
+            'Microphone permission is required for pitch detection. Please allow access and try again.',
+          actionLabel: 'Retry',
+          onAction: () => {
+            void requestPermission();
+          }
+        });
+      }
       return granted;
     } catch (error) {
       console.warn('Microphone permission request failed', error);
       setPermission('denied');
+      showNotification({
+        message:
+          'Unable to request microphone permission. Open system settings to re-enable access.',
+      });
       return false;
     }
-  }, []);
+  }, [showNotification]);
 
   React.useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -122,11 +138,14 @@ export function usePitchDetection(): PitchDetectionStatus {
       } catch (error) {
         console.warn('Unable to verify microphone permission', error);
         setPermission('denied');
+        showNotification({
+          message: 'Microphone permission check failed. Please enable access in system settings.',
+        });
       }
     };
 
     void ensurePermission();
-  }, [permission, requestPermission]);
+  }, [permission, requestPermission, showNotification]);
 
   const stopDetector = React.useCallback(async () => {
     if (!availability || !runningRef.current) {
@@ -155,9 +174,25 @@ export function usePitchDetection(): PitchDetectionStatus {
       const message = error instanceof Error ? error.message : String(error);
       if (/denied|permission/i.test(message)) {
         setPermission((prev) => (prev === 'granted' ? 'denied' : prev));
+        showNotification({
+          message: 'Pitch detector could not start because microphone access was revoked. Please re-enable permission.',
+          actionLabel: 'Retry',
+          onAction: () => {
+            void requestPermission();
+          }
+        });
+        return;
       }
+
+      showNotification({
+        message: 'Pitch detector failed to start. Try restarting detection or checking audio permissions.',
+        actionLabel: 'Retry',
+        onAction: () => {
+          void startDetector();
+        }
+      });
     }
-  }, [availability, permission, detectorOptions]);
+  }, [availability, permission, detectorOptions, requestPermission, showNotification]);
 
   React.useEffect(() => {
     if (!availability) {

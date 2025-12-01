@@ -3,21 +3,26 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
 
+import { NotificationSurface } from '@components/NotificationSurface';
 import { SettingsModal } from '@components/SettingsModal';
 import { TunerScreen } from '@components/TunerScreen';
 import { TunerProvider } from '@state/TunerStateContext';
+import { NotificationProvider } from '@state/NotificationContext';
 
 export default function App(): JSX.Element {
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <TunerProvider>
-        <View style={styles.container}>
-          <StatusBar style="light" />
-          <TunerScreen />
-          <SettingsModal />
-        </View>
-      </TunerProvider>
-    </GestureHandlerRootView>
+    <NotificationProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <TunerProvider>
+          <View style={styles.container}>
+            <StatusBar style="light" />
+            <TunerScreen />
+            <SettingsModal />
+            <NotificationSurface />
+          </View>
+        </TunerProvider>
+      </GestureHandlerRootView>
+    </NotificationProvider>
   );
 }
 

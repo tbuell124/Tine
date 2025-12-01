@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { midiToNoteName } from '../utils/music';
 import type { NoteName } from '../utils/music';
 import type { SpringState } from '../utils/spring';
+import { useNotifications } from './NotificationContext';
 
 export const SENSITIVITY_PRESETS = [
   {
@@ -405,6 +406,7 @@ export interface TunerProviderProps {
  */
 export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   const [state, dispatch] = React.useReducer(tunerReducer, initialState);
+  const { showNotification } = useNotifications();
   const hasHydratedSettingsRef = React.useRef(false);
   const pitchRef = React.useRef(state.pitch);
   const signalRef = React.useRef(state.signal);
@@ -444,6 +446,10 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.warn('Failed to restore tuner settings from storage:', error);
+        showNotification({
+          message:
+            'Unable to load saved tuner settings. Defaults were applied; try reopening the app.',
+        });
       } finally {
         if (isMounted) {
           hasHydratedSettingsRef.current = true;
@@ -456,7 +462,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [dispatch]);
+  }, [dispatch, showNotification]);
 
   React.useEffect(() => {
     if (!hasHydratedSettingsRef.current) {
@@ -469,11 +475,14 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
       } catch (error) {
         console.warn('Failed to persist tuner settings:', error);
+        showNotification({
+          message: 'Saving settings failed. Your changes may not persist—please try again.',
+        });
       }
     };
 
     void persistSettings();
-  }, [state.settings]);
+  }, [state.settings, showNotification]);
 
   React.useEffect(() => {
     const pitch = pitchRef.current;

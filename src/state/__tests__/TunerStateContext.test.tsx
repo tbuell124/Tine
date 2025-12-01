@@ -46,6 +46,7 @@ describe('TunerProvider persistence', () => {
       JSON.stringify({
         a4Calibration: 438,
         sensitivityRange: 25,
+        sensitivityProfile: 'low-latency',
         lockThreshold: 3.2,
         lockDwellTime: 0.9,
       }),
@@ -82,6 +83,7 @@ describe('TunerProvider persistence', () => {
     expect(JSON.parse(payload)).toEqual({
       a4Calibration: 438,
       sensitivityRange: 25,
+      sensitivityProfile: 'low-latency',
       lockThreshold: 2.5,
       lockDwellTime: 0.9,
     });

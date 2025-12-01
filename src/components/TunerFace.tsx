@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-na
 import Animated, { runOnJS, useSharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
-import { useTuner } from "@state/TunerStateContext";
+import { SENSITIVITY_PRESETS, useTuner } from "@state/TunerStateContext";
 import { usePitchLock } from "@hooks/usePitchLock";
 import {
   DEG_PER_CENT,
@@ -25,7 +25,7 @@ const DETENT_CENTS = 5;
 const DETENT_STEP_DEGREES = DETENT_CENTS * DEG_PER_CENT;
 const EPSILON = 1e-4;
 const DEFAULT_A4_MIDI = 69;
-const SENSITIVITY_OPTIONS = [25, 50, 100] as const;
+const SENSITIVITY_OPTIONS = SENSITIVITY_PRESETS.map((preset) => preset.range);
 
 const degToRad = (degrees: number): number => (degrees * Math.PI) / 180;
 const radToDeg = (radians: number): number => (radians * 180) / Math.PI;

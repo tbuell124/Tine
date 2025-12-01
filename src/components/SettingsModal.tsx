@@ -9,8 +9,12 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 
-import { useTuner } from '@state/TunerStateContext';
-import type { TunerSettings, SensitivityRange } from '@state/TunerStateContext';
+import {
+  SENSITIVITY_PRESETS,
+  useTuner,
+  type TunerSettings,
+  type SensitivityRange,
+} from '@state/TunerStateContext';
 
 const A4_MIN = 415;
 const A4_MAX = 466;
@@ -20,7 +24,9 @@ const LOCK_THRESHOLD_STEP = 0.5;
 const LOCK_DWELL_MIN = 0.2;
 const LOCK_DWELL_MAX = 1.5;
 const LOCK_DWELL_STEP = 0.05;
-const SENSITIVITY_OPTIONS: SensitivityRange[] = [25, 50, 100];
+const SENSITIVITY_OPTIONS: SensitivityRange[] = SENSITIVITY_PRESETS.map(
+  (preset) => preset.range,
+);
 
 const sliderTheme = {
   minimumTrackTint: '#6366F1',
@@ -30,12 +36,17 @@ const sliderTheme = {
 
 type EditableSettings = Pick<
   TunerSettings,
-  'a4Calibration' | 'sensitivityRange' | 'lockThreshold' | 'lockDwellTime'
+  | 'a4Calibration'
+  | 'sensitivityRange'
+  | 'sensitivityProfile'
+  | 'lockThreshold'
+  | 'lockDwellTime'
 >;
 
 const toEditable = (settings: TunerSettings): EditableSettings => ({
   a4Calibration: settings.a4Calibration,
   sensitivityRange: settings.sensitivityRange,
+  sensitivityProfile: settings.sensitivityProfile,
   lockThreshold: settings.lockThreshold,
   lockDwellTime: settings.lockDwellTime
 });
@@ -55,9 +66,20 @@ export const SettingsModal: React.FC = () => {
   }, [visible, settings]);
 
   const sensitivityIndex = React.useMemo(() => {
-    const index = SENSITIVITY_OPTIONS.indexOf(draft.sensitivityRange);
-    return index === -1 ? 0 : index;
-  }, [draft.sensitivityRange]);
+    const presetIndex = SENSITIVITY_PRESETS.findIndex(
+      (preset) => preset.id === draft.sensitivityProfile,
+    );
+    if (presetIndex !== -1) {
+      return presetIndex;
+    }
+
+    const rangeIndex = SENSITIVITY_OPTIONS.indexOf(draft.sensitivityRange);
+    return rangeIndex === -1 ? 1 : rangeIndex;
+  }, [draft.sensitivityProfile, draft.sensitivityRange]);
+  const selectedPreset = React.useMemo(
+    () => SENSITIVITY_PRESETS[sensitivityIndex] ?? SENSITIVITY_PRESETS[1],
+    [sensitivityIndex],
+  );
 
   const openModal = React.useCallback(() => {
     setVisible(true);
@@ -116,8 +138,11 @@ export const SettingsModal: React.FC = () => {
               </View>
               <View style={styles.settingBlock}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.settingLabel}>Sensitivity Range</Text>
-                  <Text style={styles.settingValue}>{`±${draft.sensitivityRange}¢`}</Text>
+                  <View style={styles.labelStack}>
+                    <Text style={styles.settingLabel}>Detection Profile</Text>
+                    <Text style={styles.settingSubLabel}>{`±${selectedPreset.range}¢ • ${selectedPreset.bufferSize} buffer • p>${selectedPreset.probabilityThreshold.toFixed(2)}`}</Text>
+                  </View>
+                  <Text style={styles.settingValue}>{selectedPreset.label}</Text>
                 </View>
                 <Slider
                   value={sensitivityIndex}
@@ -126,8 +151,12 @@ export const SettingsModal: React.FC = () => {
                   step={1}
                   onValueChange={(value) => {
                     const index = Math.round(value) as number;
-                    const range = SENSITIVITY_OPTIONS[index] ?? SENSITIVITY_OPTIONS[0];
-                    setDraft((prev) => ({ ...prev, sensitivityRange: range }));
+                    const preset = SENSITIVITY_PRESETS[index] ?? SENSITIVITY_PRESETS[1];
+                    setDraft((prev) => ({
+                      ...prev,
+                      sensitivityRange: preset.range,
+                      sensitivityProfile: preset.id,
+                    }));
                   }}
                   minimumTrackTintColor={sliderTheme.minimumTrackTint}
                   maximumTrackTintColor={sliderTheme.maximumTrackTint}
@@ -247,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#334155'
+  },
+  settingSubLabel: {
+    fontSize: 12,
+    color: '#475569'
+  },
+  labelStack: {
+    gap: 2
   },
   settingValue: {
     fontSize: 14,

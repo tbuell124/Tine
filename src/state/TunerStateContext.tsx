@@ -5,8 +5,32 @@ import { midiToNoteName } from '../utils/music';
 import type { NoteName } from '../utils/music';
 import type { SpringState } from '../utils/spring';
 
-const SENSITIVITY_OPTIONS = [25, 50, 100] as const;
-export type SensitivityRange = (typeof SENSITIVITY_OPTIONS)[number];
+export const SENSITIVITY_PRESETS = [
+  {
+    id: 'low-latency',
+    label: 'Low Latency',
+    range: 25 as const,
+    bufferSize: 512,
+    probabilityThreshold: 0.18,
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    range: 50 as const,
+    bufferSize: 1024,
+    probabilityThreshold: 0.14,
+  },
+  {
+    id: 'stable',
+    label: 'Stable',
+    range: 100 as const,
+    bufferSize: 2048,
+    probabilityThreshold: 0.1,
+  },
+] as const;
+
+export type SensitivityRange = (typeof SENSITIVITY_PRESETS)[number]['range'];
+export type SensitivityPresetId = (typeof SENSITIVITY_PRESETS)[number]['id'];
 
 const A4_MIN = 415;
 const A4_MAX = 466;
@@ -15,6 +39,10 @@ const LOCK_THRESHOLD_MAX = 8;
 const LOCK_DWELL_MIN = 0.2;
 const LOCK_DWELL_MAX = 1.5;
 const SETTINGS_STORAGE_KEY = 'tine:tunerSettings';
+const DETECTOR_BUFFER_MIN = 256;
+const DETECTOR_BUFFER_MAX = 4096;
+const DETECTOR_THRESHOLD_MIN = 0.05;
+const DETECTOR_THRESHOLD_MAX = 0.35;
 
 const SIGNAL_RECENT_WINDOW_MS = 220;
 const SIGNAL_LISTENING_TIMEOUT_MS = 500;
@@ -65,6 +93,7 @@ export interface SpringRuntimeState extends SpringState {
 export interface TunerSettings {
   a4Calibration: number;
   sensitivityRange: SensitivityRange;
+  sensitivityProfile: SensitivityPresetId;
   lockThreshold: number;
   lockDwellTime: number;
   /** When true the UI enters manual note selection mode and hides live cents readouts. */
@@ -110,10 +139,15 @@ type TunerAction =
   | { type: 'RESET' };
 
 const DEFAULT_A4_MIDI = 69;
+const DEFAULT_SENSITIVITY_PRESET = SENSITIVITY_PRESETS[1];
 
 type PersistentSettings = Pick<
   TunerSettings,
-  'a4Calibration' | 'sensitivityRange' | 'lockThreshold' | 'lockDwellTime'
+  | 'a4Calibration'
+  | 'sensitivityRange'
+  | 'sensitivityProfile'
+  | 'lockThreshold'
+  | 'lockDwellTime'
 >;
 
 const clampNumber = (value: number, min: number, max: number): number =>
@@ -135,6 +169,20 @@ const clampConfidence = (confidence: number): number => {
   return Number(confidence.toFixed(4));
 };
 
+const clampBufferSize = (bufferSize: number): number =>
+  Math.round(clampNumber(bufferSize, DETECTOR_BUFFER_MIN, DETECTOR_BUFFER_MAX));
+
+const clampDetectorThreshold = (threshold: number): number =>
+  parseFloat(
+    clampNumber(threshold, DETECTOR_THRESHOLD_MIN, DETECTOR_THRESHOLD_MAX).toFixed(3),
+  );
+
+const findPresetById = (id: SensitivityPresetId | undefined) =>
+  SENSITIVITY_PRESETS.find((preset) => preset.id === id);
+
+const findPresetByRange = (range: SensitivityRange | undefined) =>
+  SENSITIVITY_PRESETS.find((preset) => preset.range === range);
+
 const describeSignalPhase = (phase: SignalPhase): string => {
   switch (phase) {
     case 'listening':
@@ -151,6 +199,10 @@ const describeSignalPhase = (phase: SignalPhase): string => {
 
 const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<TunerSettings> => {
   const result: Partial<TunerSettings> = {};
+  let resolvedPreset =
+    payload.sensitivityProfile !== undefined
+      ? findPresetById(payload.sensitivityProfile)
+      : undefined;
 
   if (payload.a4Calibration !== undefined) {
     const calibrated = Math.round(payload.a4Calibration);
@@ -158,9 +210,19 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
   }
 
   if (payload.sensitivityRange !== undefined) {
-    if (SENSITIVITY_OPTIONS.includes(payload.sensitivityRange as SensitivityRange)) {
-      result.sensitivityRange = payload.sensitivityRange as SensitivityRange;
+    const matchedPreset = findPresetByRange(payload.sensitivityRange as SensitivityRange);
+    if (matchedPreset) {
+      resolvedPreset = matchedPreset;
     }
+  }
+
+  if (payload.sensitivityProfile !== undefined && !resolvedPreset) {
+    resolvedPreset = DEFAULT_SENSITIVITY_PRESET;
+  }
+
+  if (resolvedPreset) {
+    result.sensitivityRange = resolvedPreset.range;
+    result.sensitivityProfile = resolvedPreset.id;
   }
 
   if (payload.lockThreshold !== undefined) {
@@ -189,9 +251,35 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
 const extractPersistentSettings = (settings: TunerSettings): PersistentSettings => ({
   a4Calibration: settings.a4Calibration,
   sensitivityRange: settings.sensitivityRange,
+  sensitivityProfile: settings.sensitivityProfile,
   lockThreshold: settings.lockThreshold,
   lockDwellTime: settings.lockDwellTime
 });
+
+export const resolveSensitivityPreset = (
+  settings: TunerSettings,
+): (typeof SENSITIVITY_PRESETS)[number] => {
+  const presetById = findPresetById(settings.sensitivityProfile);
+  if (presetById) {
+    return presetById;
+  }
+
+  const presetByRange = findPresetByRange(settings.sensitivityRange);
+  if (presetByRange) {
+    return presetByRange;
+  }
+
+  return DEFAULT_SENSITIVITY_PRESET;
+};
+
+export const getDetectorOptionsForSettings = (settings: TunerSettings) => {
+  const preset = resolveSensitivityPreset(settings);
+
+  return {
+    bufferSize: clampBufferSize(preset.bufferSize),
+    threshold: clampDetectorThreshold(preset.probabilityThreshold),
+  };
+};
 
 const initialState: TunerState = {
   pitch: {
@@ -212,7 +300,8 @@ const initialState: TunerState = {
   },
   settings: {
     a4Calibration: 440,
-    sensitivityRange: 50,
+    sensitivityRange: DEFAULT_SENSITIVITY_PRESET.range,
+    sensitivityProfile: DEFAULT_SENSITIVITY_PRESET.id,
     lockThreshold: 2,
     lockDwellTime: 0.4,
     manualMode: false

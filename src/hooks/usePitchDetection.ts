@@ -6,7 +6,7 @@ import {
   Platform
 } from 'react-native';
 
-import { useTuner } from '@state/TunerStateContext';
+import { getDetectorOptionsForSettings, useTuner } from '@state/TunerStateContext';
 import {
   centsToDegrees,
   midiToNoteName,
@@ -61,6 +61,10 @@ export function usePitchDetection(): PitchDetectionStatus {
   );
   const manualModeRef = React.useRef(state.settings.manualMode);
   const runningRef = React.useRef(false);
+  const detectorOptions = React.useMemo(
+    () => getDetectorOptionsForSettings(state.settings),
+    [state.settings]
+  );
 
   React.useEffect(() => {
     manualModeRef.current = state.settings.manualMode;
@@ -144,7 +148,7 @@ export function usePitchDetection(): PitchDetectionStatus {
     }
 
     try {
-      await PitchDetector.start({ bufferSize: 2048, threshold: 0.12 });
+      await PitchDetector.start(detectorOptions);
       runningRef.current = true;
     } catch (error) {
       console.error('Failed to start pitch detector', error);
@@ -153,7 +157,7 @@ export function usePitchDetection(): PitchDetectionStatus {
         setPermission((prev) => (prev === 'granted' ? 'denied' : prev));
       }
     }
-  }, [availability, permission]);
+  }, [availability, permission, detectorOptions]);
 
   React.useEffect(() => {
     if (!availability) {

@@ -5,18 +5,22 @@ import { StyleSheet, View } from 'react-native';
 
 import { SettingsModal } from '@components/SettingsModal';
 import { TunerScreen } from '@components/TunerScreen';
+import { NotificationProvider, NotificationSurface } from '@state/NotificationContext';
 import { TunerProvider } from '@state/TunerStateContext';
 
 export default function App(): JSX.Element {
   return (
     <GestureHandlerRootView style={styles.root}>
-      <TunerProvider>
-        <View style={styles.container}>
-          <StatusBar style="light" />
-          <TunerScreen />
-          <SettingsModal />
-        </View>
-      </TunerProvider>
+      <NotificationProvider>
+        <TunerProvider>
+          <View style={styles.container}>
+            <StatusBar style="light" />
+            <TunerScreen />
+            <SettingsModal />
+            <NotificationSurface />
+          </View>
+        </TunerProvider>
+      </NotificationProvider>
     </GestureHandlerRootView>
   );
 }

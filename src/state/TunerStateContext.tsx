@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { midiToNoteName } from '../utils/music';
 import type { NoteName } from '../utils/music';
 import type { SpringState } from '../utils/spring';
+import { useNotifications } from './NotificationContext';
 
 const SENSITIVITY_OPTIONS = [25, 50, 100] as const;
 export type SensitivityRange = (typeof SENSITIVITY_OPTIONS)[number];
@@ -316,6 +317,7 @@ export interface TunerProviderProps {
  */
 export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   const [state, dispatch] = React.useReducer(tunerReducer, initialState);
+  const { pushNotification } = useNotifications();
   const hasHydratedSettingsRef = React.useRef(false);
   const pitchRef = React.useRef(state.pitch);
   const signalRef = React.useRef(state.signal);
@@ -355,6 +357,12 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.warn('Failed to restore tuner settings from storage:', error);
+        pushNotification({
+          message: 'Saved tuner settings could not be restored. Defaults are in use.',
+          actionLabel: 'Retry load',
+          onActionPress: () => void hydrateSettings(),
+          dedupeKey: 'settings-hydration-error',
+        });
       } finally {
         if (isMounted) {
           hasHydratedSettingsRef.current = true;
@@ -367,7 +375,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [dispatch]);
+  }, [dispatch, pushNotification]);
 
   React.useEffect(() => {
     if (!hasHydratedSettingsRef.current) {
@@ -380,11 +388,17 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
       } catch (error) {
         console.warn('Failed to persist tuner settings:', error);
+        pushNotification({
+          message: 'Saving tuner settings failed. Try again to keep your changes.',
+          actionLabel: 'Retry save',
+          onActionPress: () => void persistSettings(),
+          dedupeKey: 'settings-persist-error',
+        });
       }
     };
 
     void persistSettings();
-  }, [state.settings]);
+  }, [pushNotification, state.settings]);
 
   React.useEffect(() => {
     const pitch = pitchRef.current;

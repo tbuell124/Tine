@@ -34,6 +34,8 @@ Tine is a React Native + Expo application that delivers the tactile feel of a st
 
 Follow this checklist before cloning the project. macOS steps are listed first because iOS builds require a Mac.
 
+> Looking for a single place to confirm every system dependency? Review the consolidated [Requirements guide](./docs/Requirements.md) before installing tooling.
+
 ### macOS tooling
 
 | Tool | Minimum version | Install command / link | Notes |

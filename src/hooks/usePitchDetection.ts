@@ -13,6 +13,7 @@ import {
   NOTE_STEP_DEG,
   type NoteName
 } from '@utils/music';
+import { getMonotonicTime } from '@utils/clock';
 import * as PitchDetector from '@native/modules/PitchDetector';
 import {
   isPitchDetectorModuleAvailable,
@@ -204,7 +205,7 @@ export function usePitchDetection(): PitchDetectionStatus {
         return;
       }
 
-      const timestamp = Date.now();
+      const timestamp = getMonotonicTime();
 
       if (!event.isValid) {
         actions.setPitch({

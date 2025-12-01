@@ -1,10 +1,12 @@
 import React from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { midiToNoteName } from '../utils/music';
 import type { NoteName } from '../utils/music';
 import type { SpringState } from '../utils/spring';
 import { useNotifications } from './NotificationContext';
+import { getMonotonicTime } from '../utils/clock';
 
 export const SENSITIVITY_PRESETS = [
   {
@@ -64,7 +66,7 @@ export interface PitchState {
   noteName: NoteName | null;
   /** Confidence score from the detector between 0 (noise) and 1 (perfect). */
   confidence: number;
-  /** Timestamp of the most recent detector update (ms since epoch). */
+  /** Timestamp of the most recent detector update (monotonic milliseconds). */
   updatedAt: number;
 }
 
@@ -118,11 +120,11 @@ export type SignalPhase = 'listening' | 'stabilizing' | 'tracking' | 'dropout';
 export interface SignalState {
   /** High level descriptor of the incoming audio state. */
   phase: SignalPhase;
-  /** Timestamp of the last phase transition. */
+  /** Timestamp of the last phase transition (monotonic milliseconds). */
   lastChange: number;
-  /** Prevents dial updates while freezing after a dropout (ms since epoch). */
+  /** Prevents dial updates while freezing after a dropout (monotonic milliseconds). */
   freezeUntil: number;
-  /** Timestamp of the last moment any usable signal was heard. */
+  /** Timestamp of the last moment any usable signal was heard (monotonic milliseconds). */
   lastHeardAt: number;
 }
 
@@ -309,7 +311,7 @@ const initialState: TunerState = {
   },
   signal: {
     phase: 'listening',
-    lastChange: Date.now(),
+    lastChange: getMonotonicTime(),
     freezeUntil: 0,
     lastHeardAt: 0
   }
@@ -341,7 +343,7 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
       }
 
       if (providedMidi !== undefined || action.payload.cents !== undefined || action.payload.confidence !== undefined) {
-        nextPitch.updatedAt = action.payload.updatedAt ?? Date.now();
+        nextPitch.updatedAt = action.payload.updatedAt ?? getMonotonicTime();
       }
 
       return {
@@ -350,7 +352,7 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
       };
     }
     case 'SET_ANGLES': {
-      const now = Date.now();
+      const now = getMonotonicTime();
       if (
         !action.meta?.force &&
         state.signal.phase === 'dropout' &&
@@ -413,6 +415,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   const anglesRef = React.useRef(state.angles);
   const lastReliableAtRef = React.useRef<number | null>(null);
   const dropoutTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appStateRef = React.useRef<AppStateStatus>(AppState.currentState);
 
   React.useEffect(() => {
     pitchRef.current = state.pitch;
@@ -425,6 +428,39 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   React.useEffect(() => {
     anglesRef.current = state.angles;
   }, [state.angles]);
+
+  React.useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      const wasActive = appStateRef.current === 'active';
+      appStateRef.current = nextState;
+
+      if (wasActive && nextState !== 'active') {
+        if (dropoutTimeoutRef.current) {
+          clearTimeout(dropoutTimeoutRef.current);
+          dropoutTimeoutRef.current = null;
+        }
+
+        const latestSignal = signalRef.current;
+        if (latestSignal.phase === 'dropout' && latestSignal.freezeUntil > 0) {
+          dispatch({
+            type: 'SET_SIGNAL',
+            payload: {
+              phase: 'listening',
+              freezeUntil: 0,
+              lastChange: getMonotonicTime(),
+              lastHeardAt: latestSignal.lastHeardAt,
+            },
+          });
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [dispatch]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -487,7 +523,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   React.useEffect(() => {
     const pitch = pitchRef.current;
     const signal = signalRef.current;
-    const now = Date.now();
+    const now = getMonotonicTime();
 
     if (state.settings.manualMode) {
       if (dropoutTimeoutRef.current) {
@@ -596,7 +632,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
               return;
             }
 
-            if (latestSignal.freezeUntil > Date.now()) {
+            if (latestSignal.freezeUntil > getMonotonicTime()) {
               return;
             }
 
@@ -605,7 +641,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
               payload: {
                 phase: 'listening',
                 freezeUntil: 0,
-                lastChange: Date.now(),
+                lastChange: getMonotonicTime(),
                 lastHeardAt: latestSignal.lastHeardAt,
               },
             });

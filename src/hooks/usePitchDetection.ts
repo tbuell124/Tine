@@ -63,12 +63,13 @@ export function usePitchDetection(): PitchDetectionStatus {
   const [permission, setPermission] = React.useState<PermissionState>(
     Platform.OS === 'android' ? 'unknown' : 'granted'
   );
-  const manualModeRef = React.useRef(state.settings.manualMode);
-  const runningRef = React.useRef(false);
   const detectorOptions = React.useMemo(
     () => getDetectorOptionsForSettings(state.settings),
     [state.settings]
   );
+  const manualModeRef = React.useRef(state.settings.manualMode);
+  const runningRef = React.useRef(false);
+  const lastDetectorOptionsRef = React.useRef(detectorOptions);
 
   React.useEffect(() => {
     manualModeRef.current = state.settings.manualMode;
@@ -250,6 +251,58 @@ export function usePitchDetection(): PitchDetectionStatus {
       void stopDetector();
     };
   }, [actions, availability, permission, startDetector, stopDetector]);
+
+  React.useEffect(() => {
+    if (!availability) {
+      return;
+    }
+
+    const previousOptions = lastDetectorOptionsRef.current;
+    const nextOptions = detectorOptions;
+
+    if (
+      previousOptions.bufferSize === nextOptions.bufferSize &&
+      previousOptions.threshold === nextOptions.threshold
+    ) {
+      return;
+    }
+
+    lastDetectorOptionsRef.current = nextOptions;
+
+    if (!runningRef.current || permission !== 'granted') {
+      return;
+    }
+
+    const applyUpdates = async () => {
+      const onlyThresholdChanged = previousOptions.bufferSize === nextOptions.bufferSize;
+
+      if (onlyThresholdChanged) {
+        try {
+          PitchDetector.setThreshold(nextOptions.threshold);
+          logger.info('detector_config', 'Updated detector threshold in-place', nextOptions);
+          return;
+        } catch (error) {
+          logger.warn('detector_config', 'Failed to apply live threshold update', {
+            error,
+            nextOptions,
+          });
+        }
+      }
+
+      try {
+        await stopDetector();
+        await startDetector();
+        logger.info('detector_restart', 'Restarted detector with updated sensitivity', nextOptions);
+      } catch (error) {
+        logger.error('detector_restart', 'Failed to restart detector after settings change', {
+          error,
+          nextOptions,
+        });
+      }
+    };
+
+    void applyUpdates();
+  }, [availability, detectorOptions, permission, startDetector, stopDetector]);
 
   React.useEffect(() => {
     if (!availability) {

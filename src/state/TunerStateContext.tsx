@@ -416,6 +416,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   const anglesRef = React.useRef(state.angles);
   const lastReliableAtRef = React.useRef<number | null>(null);
   const dropoutTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelListeningDecayRef = React.useRef<(() => void) | null>(null);
   const appStateRef = React.useRef<AppStateStatus>(AppState.currentState);
 
   React.useEffect(() => {
@@ -439,6 +440,11 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         if (dropoutTimeoutRef.current) {
           clearTimeout(dropoutTimeoutRef.current);
           dropoutTimeoutRef.current = null;
+        }
+
+        if (cancelListeningDecayRef.current) {
+          cancelListeningDecayRef.current();
+          cancelListeningDecayRef.current = null;
         }
 
         const latestSignal = signalRef.current;
@@ -628,16 +634,20 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         });
 
         if (nextPhase === 'dropout') {
+          const freezeDeadline = freezeUntil;
           if (dropoutTimeoutRef.current) {
             clearTimeout(dropoutTimeoutRef.current);
           }
+
+          const delay = Math.max(freezeDeadline - getMonotonicTime(), 0);
           dropoutTimeoutRef.current = setTimeout(() => {
             const latestSignal = signalRef.current;
             if (latestSignal.phase !== 'dropout') {
               return;
             }
 
-            if (latestSignal.freezeUntil > getMonotonicTime()) {
+            const nowMonotonic = getMonotonicTime();
+            if (latestSignal.freezeUntil > nowMonotonic) {
               return;
             }
 
@@ -646,11 +656,12 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
               payload: {
                 phase: 'listening',
                 freezeUntil: 0,
-                lastChange: getMonotonicTime(),
+                lastChange: nowMonotonic,
                 lastHeardAt: latestSignal.lastHeardAt,
               },
             });
-          }, SIGNAL_FREEZE_DURATION_MS);
+            dropoutTimeoutRef.current = null;
+          }, delay);
         } else if (dropoutTimeoutRef.current) {
           clearTimeout(dropoutTimeoutRef.current);
           dropoutTimeoutRef.current = null;
@@ -660,6 +671,11 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
   }, [state.pitch, state.signal, state.settings.manualMode, dispatch]);
 
   React.useEffect(() => {
+    if (cancelListeningDecayRef.current) {
+      cancelListeningDecayRef.current();
+      cancelListeningDecayRef.current = null;
+    }
+
     if (state.settings.manualMode) {
       return;
     }
@@ -672,7 +688,14 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
     let frame: number | null = null;
     let lastTimestamp: number | null = null;
 
-    const tick = (timestamp: number) => {
+    const cancel = () => {
+      isMounted = false;
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
+
+    const tick = (_timestamp: number) => {
       if (!isMounted) {
         return;
       }
@@ -681,14 +704,15 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         return;
       }
 
+      const nowMonotonic = getMonotonicTime();
       if (lastTimestamp === null) {
-        lastTimestamp = timestamp;
+        lastTimestamp = nowMonotonic;
         frame = requestAnimationFrame(tick);
         return;
       }
 
-      const deltaTime = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
-      lastTimestamp = timestamp;
+      const deltaTime = Math.min((nowMonotonic - lastTimestamp) / 1000, 0.05);
+      lastTimestamp = nowMonotonic;
 
       const { outer, inner } = anglesRef.current;
 
@@ -724,12 +748,9 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
 
     frame = requestAnimationFrame(tick);
 
-    return () => {
-      isMounted = false;
-      if (frame !== null) {
-        cancelAnimationFrame(frame);
-      }
-    };
+    cancelListeningDecayRef.current = cancel;
+
+    return cancel;
   }, [state.signal.phase, state.settings.manualMode, dispatch]);
 
   React.useEffect(() => {

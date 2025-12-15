@@ -11,6 +11,8 @@ export interface PitchEvent {
   cents: number;
   probability: number;
   noteName: string;
+  /** Optional monotonic timestamp (ms) provided by the native detector for JS sync. */
+  timestamp?: number;
 }
 
 /**

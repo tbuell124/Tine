@@ -2,9 +2,11 @@ import React from 'react';
 import {
   AppState,
   type AppStateStatus,
+  Linking,
   PermissionsAndroid,
   Platform
 } from 'react-native';
+import { Audio } from 'expo-av';
 
 import { getDetectorOptionsForSettings, useTuner } from '@state/TunerStateContext';
 import {
@@ -60,11 +62,10 @@ export function usePitchDetection(): PitchDetectionStatus {
   const { state, actions } = useTuner();
   const { showNotification } = useNotifications();
   const availability = isPitchDetectorModuleAvailable;
-  const [permission, setPermission] = React.useState<PermissionState>(
-    Platform.OS === 'android' ? 'unknown' : 'granted'
-  );
+  const [permission, setPermission] = React.useState<PermissionState>('unknown');
   const manualModeRef = React.useRef(state.settings.manualMode);
   const runningRef = React.useRef(false);
+  const permissionAlertRef = React.useRef(false);
   const detectorOptions = React.useMemo(
     () => getDetectorOptionsForSettings(state.settings),
     [state.settings]
@@ -74,10 +75,44 @@ export function usePitchDetection(): PitchDetectionStatus {
     manualModeRef.current = state.settings.manualMode;
   }, [state.settings.manualMode]);
 
+  const openSystemSettings = React.useCallback(async () => {
+    try {
+      await Linking.openSettings();
+    } catch (error) {
+      logger.warn('permission', 'Failed to open system settings', { error });
+    }
+  }, []);
+
   const requestPermission = React.useCallback(async () => {
-    if (Platform.OS !== 'android') {
-      setPermission('granted');
-      return true;
+    if (Platform.OS === 'ios') {
+      try {
+        const { status, granted, canAskAgain } = await Audio.requestPermissionsAsync();
+        const isGranted = status === 'granted' || granted;
+        setPermission(isGranted ? 'granted' : 'denied');
+
+        if (!isGranted) {
+          permissionAlertRef.current = true;
+          showNotification({
+            message:
+              'Microphone permission is required for pitch detection. Enable access to continue tuning.',
+            actionLabel: canAskAgain ? 'Grant Access' : 'Open Settings',
+            onAction: canAskAgain ? () => void requestPermission() : () => void openSystemSettings()
+          });
+        }
+
+        return isGranted;
+      } catch (error) {
+        logger.warn('permission', 'Microphone permission request failed on iOS', { error });
+        setPermission('denied');
+        permissionAlertRef.current = true;
+        showNotification({
+          message:
+            'Unable to request microphone permission. Use the Settings button to enable access.',
+          actionLabel: 'Open Settings',
+          onAction: () => void openSystemSettings()
+        });
+        return false;
+      }
     }
 
     try {
@@ -93,6 +128,7 @@ export function usePitchDetection(): PitchDetectionStatus {
       const granted = result === PermissionsAndroid.RESULTS.GRANTED;
       setPermission(granted ? 'granted' : 'denied');
       if (!granted) {
+        permissionAlertRef.current = true;
         showNotification({
           message:
             'Microphone permission is required for pitch detection. Please allow access and try again.',
@@ -106,25 +142,36 @@ export function usePitchDetection(): PitchDetectionStatus {
     } catch (error) {
       logger.warn('permission', 'Microphone permission request failed', { error });
       setPermission('denied');
+      permissionAlertRef.current = true;
       showNotification({
         message:
           'Unable to request microphone permission. Open system settings to re-enable access.',
       });
       return false;
     }
-  }, [showNotification]);
+  }, [openSystemSettings, showNotification]);
 
   React.useEffect(() => {
-    if (Platform.OS !== 'android') {
-      return;
-    }
-
     if (permission !== 'unknown') {
       return;
     }
 
     const ensurePermission = async () => {
       try {
+        if (Platform.OS === 'ios') {
+          const { status, granted } = await Audio.getPermissionsAsync();
+          if (status === 'granted' || granted) {
+            setPermission('granted');
+            return;
+          }
+
+          const result = await requestPermission();
+          if (!result) {
+            setPermission('denied');
+          }
+          return;
+        }
+
         const hasPermission = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
         );
@@ -142,12 +189,33 @@ export function usePitchDetection(): PitchDetectionStatus {
         setPermission('denied');
         showNotification({
           message: 'Microphone permission check failed. Please enable access in system settings.',
+          actionLabel: 'Open Settings',
+          onAction: () => void openSystemSettings()
         });
       }
     };
 
     void ensurePermission();
-  }, [permission, requestPermission, showNotification]);
+  }, [openSystemSettings, permission, requestPermission, showNotification]);
+
+  React.useEffect(() => {
+    if (permission !== 'denied') {
+      if (permission === 'granted') {
+        permissionAlertRef.current = false;
+      }
+      return;
+    }
+
+    if (!permissionAlertRef.current) {
+      permissionAlertRef.current = true;
+      showNotification({
+        message:
+          'Microphone access is disabled. Use the Settings button to re-enable audio detection.',
+        actionLabel: 'Open Settings',
+        onAction: () => void openSystemSettings()
+      });
+    }
+  }, [openSystemSettings, permission, showNotification]);
 
   const stopDetector = React.useCallback(async () => {
     if (!availability || !runningRef.current) {

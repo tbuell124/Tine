@@ -208,7 +208,7 @@ export function usePitchDetection(): PitchDetectionStatus {
         return;
       }
 
-      const timestamp = getMonotonicTime();
+      const timestamp = event.timestamp ?? getMonotonicTime();
 
       if (!event.isValid) {
         actions.setPitch({

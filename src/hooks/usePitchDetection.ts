@@ -14,6 +14,7 @@ import {
   type NoteName
 } from '@utils/music';
 import { getMonotonicTime } from '@utils/clock';
+import { logger } from '@utils/logger';
 import * as PitchDetector from '@native/modules/PitchDetector';
 import {
   isPitchDetectorModuleAvailable,
@@ -103,7 +104,7 @@ export function usePitchDetection(): PitchDetectionStatus {
       }
       return granted;
     } catch (error) {
-      console.warn('Microphone permission request failed', error);
+      logger.warn('permission', 'Microphone permission request failed', { error });
       setPermission('denied');
       showNotification({
         message:
@@ -137,7 +138,7 @@ export function usePitchDetection(): PitchDetectionStatus {
           setPermission('denied');
         }
       } catch (error) {
-        console.warn('Unable to verify microphone permission', error);
+        logger.warn('permission', 'Unable to verify microphone permission', { error });
         setPermission('denied');
         showNotification({
           message: 'Microphone permission check failed. Please enable access in system settings.',
@@ -155,8 +156,9 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     try {
       await PitchDetector.stop();
+      logger.info('detector_stop', 'Stopped pitch detector');
     } catch (error) {
-      console.warn('Failed to stop pitch detector', error);
+      logger.warn('detector_stop', 'Failed to stop pitch detector', { error });
     } finally {
       runningRef.current = false;
     }
@@ -169,9 +171,10 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     try {
       await PitchDetector.start(detectorOptions);
+      logger.info('detector_start', 'Started pitch detector', detectorOptions);
       runningRef.current = true;
     } catch (error) {
-      console.error('Failed to start pitch detector', error);
+      logger.error('detector_start', 'Failed to start pitch detector', { error, detectorOptions });
       const message = error instanceof Error ? error.message : String(error);
       if (/denied|permission/i.test(message)) {
         setPermission((prev) => (prev === 'granted' ? 'denied' : prev));

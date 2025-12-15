@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
 
 import { NotificationSurface } from '@components/NotificationSurface';
+import { DebugLogOverlay } from '@components/DebugLogOverlay';
 import { SettingsModal } from '@components/SettingsModal';
 import { TunerScreen } from '@components/TunerScreen';
 import { TunerProvider } from '@state/TunerStateContext';
@@ -19,6 +20,7 @@ export default function App(): JSX.Element {
             <TunerScreen />
             <SettingsModal />
             <NotificationSurface />
+            <DebugLogOverlay />
           </View>
         </TunerProvider>
       </GestureHandlerRootView>

@@ -7,6 +7,7 @@ import type { NoteName } from '../utils/music';
 import type { SpringState } from '../utils/spring';
 import { useNotifications } from './NotificationContext';
 import { getMonotonicTime } from '../utils/clock';
+import { logger } from '../utils/logger';
 
 export const SENSITIVITY_PRESETS = [
   {
@@ -481,7 +482,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
           return;
         }
       } catch (error) {
-        console.warn('Failed to restore tuner settings from storage:', error);
+        logger.warn('settings', 'Failed to restore tuner settings from storage', { error });
         showNotification({
           message:
             'Unable to load saved tuner settings. Defaults were applied; try reopening the app.',
@@ -510,7 +511,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
         const payload = extractPersistentSettings(state.settings);
         await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
       } catch (error) {
-        console.warn('Failed to persist tuner settings:', error);
+        logger.warn('settings', 'Failed to persist tuner settings', { error });
         showNotification({
           message: 'Saving settings failed. Your changes may not persist—please try again.',
         });
@@ -540,7 +541,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
             lastChange: now,
           },
         });
-        console.log(describeSignalPhase('tracking'));
+        logger.info('signal_phase', describeSignalPhase('tracking'));
       }
       lastReliableAtRef.current = now;
       return;
@@ -620,7 +621,11 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
       });
 
       if (phaseChanged) {
-        console.log(describeSignalPhase(nextPhase));
+        logger.info('signal_phase', describeSignalPhase(nextPhase), {
+          phase: nextPhase,
+          confidence: confidence.toFixed(3),
+          lastHeardAt,
+        });
 
         if (nextPhase === 'dropout') {
           if (dropoutTimeoutRef.current) {

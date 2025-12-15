@@ -37,14 +37,14 @@ export const TunerScreen: React.FC = () => {
           Platform.OS === 'android'
             ? 'Microphone access was denied. Grant permission to start tuning.'
             : 'Microphone access is disabled. Enable it in Settings to continue tuning.',
-        actionLabel: Platform.OS === 'android' ? 'Enable Microphone' : null
+        actionLabel: 'Enable Microphone'
       } as const;
     }
 
     if (permission === 'unknown') {
       return {
-        message: 'Requesting microphone access…',
-        actionLabel: null
+        message: 'Microphone access is needed to start tuning.',
+        actionLabel: 'Grant Access'
       } as const;
     }
 

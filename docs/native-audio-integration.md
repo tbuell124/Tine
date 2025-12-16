@@ -24,6 +24,12 @@ Events fire under the `onPitchData` name and carry `PitchEvent` payloads (`isVal
 * The native layer compiles `native/cpp/YinPitchDetector.{hpp,cpp}` and `native/cpp/FloatRingBuffer.hpp`. They provide the YIN algorithm and a single-producer/single-consumer ring buffer sized to `bufferSize * 4` frames.
 * `PitchResult` mirrors the TypeScript payload (`isValid`, `frequency`, `midi`, `cents`, `probability`, `noteName`) so the JS payload stays consistent across platforms.
 
+## Window length vs. latency
+
+* The detector defaults to a 2,048-frame analysis window (≈46 ms at 44.1 kHz). Larger windows sharpen frequency resolution but delay UI updates because more audio must accumulate before each YIN evaluation.
+* Guitar tuners typically surface feedback within 10–20 ms. When targeting that responsiveness, consider dropping the window to 1,024 or even 512 frames so the output reacts sooner, while acknowledging the trade-off in noisy environments and for low notes where longer windows stabilize detection.
+* Ensure the ring buffer remains at least twice the largest window size to avoid underruns when experimenting with shorter windows.
+
 ## iOS implementation (AVAudioEngine)
 
 1. `ios/Tine/PitchDetectorModule.mm` subclasses `RCTEventEmitter`. `RCT_EXPORT_MODULE(PitchDetector)` matches the JavaScript name.

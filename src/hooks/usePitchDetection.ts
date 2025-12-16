@@ -59,23 +59,74 @@ const midiToOuterDegrees = (midi: number): number => {
   return normaliseDegrees(degrees);
 };
 
+const clampConfidence = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  if (value <= 0) {
+    return 0;
+  }
+
+  if (value >= 1) {
+    return 1;
+  }
+
+  return Number(value.toFixed(4));
+};
+
+const NOTE_CHANGE_HYSTERESIS_MS = 220;
+const HOLD_LAST_STABLE_MS = 520;
+
 export function usePitchDetection(): PitchDetectionStatus {
   const { state, actions } = useTuner();
   const { showNotification } = useNotifications();
   const availability = isPitchDetectorModuleAvailable;
   const [permission, setPermission] = React.useState<PermissionState>('unknown');
   const manualModeRef = React.useRef(state.settings.manualMode);
-  const runningRef = React.useRef(false);
-  const permissionAlertRef = React.useRef(false);
-  const restartTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const detectorOptions = React.useMemo(
     () => getDetectorOptionsForSettings(state.settings),
     [state.settings]
   );
+  const confidenceGateRef = React.useRef(detectorOptions.threshold);
+  const stablePitchRef = React.useRef({
+    midi: state.pitch.midi,
+    cents: state.pitch.cents,
+    noteName: state.pitch.noteName,
+    confidence: state.pitch.confidence,
+    updatedAt: state.pitch.updatedAt,
+  });
+  const candidateRef = React.useRef<{
+    midi: number;
+    noteName: NoteName;
+    cents: number;
+    confidence: number;
+    startedAt: number;
+  } | null>(null);
+  const fadeFrameRef = React.useRef<number | null>(null);
+  const fadeStartRef = React.useRef<number | null>(null);
+  const fadeBaselineRef = React.useRef(0);
+  const runningRef = React.useRef(false);
+  const permissionAlertRef = React.useRef(false);
+  const restartTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     manualModeRef.current = state.settings.manualMode;
   }, [state.settings.manualMode]);
+
+  React.useEffect(() => {
+    confidenceGateRef.current = detectorOptions.threshold;
+  }, [detectorOptions.threshold]);
+
+  React.useEffect(() => {
+    stablePitchRef.current = {
+      midi: state.pitch.midi,
+      cents: state.pitch.cents,
+      noteName: state.pitch.noteName,
+      confidence: state.pitch.confidence,
+      updatedAt: state.pitch.updatedAt,
+    };
+  }, [state.pitch]);
 
   const openSystemSettings = React.useCallback(async () => {
     try {
@@ -84,6 +135,96 @@ export function usePitchDetection(): PitchDetectionStatus {
       logger.warn('permission', 'Failed to open system settings', { error });
     }
   }, []);
+
+  const clearFade = React.useCallback(() => {
+    if (fadeFrameRef.current !== null) {
+      cancelAnimationFrame(fadeFrameRef.current);
+      fadeFrameRef.current = null;
+    }
+    fadeStartRef.current = null;
+  }, []);
+
+  const commitPitch = React.useCallback(
+    (payload: Partial<{
+      midi: number | null;
+      cents: number;
+      noteName: NoteName | null;
+      confidence: number;
+      updatedAt: number;
+    }>) => {
+      const baseline = stablePitchRef.current;
+      const next = {
+        midi: payload.midi ?? baseline.midi,
+        cents: payload.cents ?? baseline.cents,
+        noteName: payload.noteName ?? baseline.noteName,
+        confidence: clampConfidence(payload.confidence ?? baseline.confidence ?? 0),
+        updatedAt: payload.updatedAt ?? getMonotonicTime(),
+      };
+
+      stablePitchRef.current = next;
+
+      actions.setPitch(next);
+
+      if (next.midi !== null) {
+        actions.setAngles({
+          outer: midiToOuterDegrees(next.midi),
+          inner: centsToDegrees(next.cents),
+        });
+      } else {
+        actions.setAngles({ inner: 0 });
+      }
+    },
+    [actions],
+  );
+
+  const startHoldFade = React.useCallback(
+    (startTime?: number) => {
+      clearFade();
+      candidateRef.current = null;
+
+      const baselineConfidence = clampConfidence(stablePitchRef.current.confidence ?? 0);
+      fadeStartRef.current = startTime ?? getMonotonicTime();
+      fadeBaselineRef.current = baselineConfidence;
+
+      if (baselineConfidence <= 0) {
+        commitPitch({
+          midi: null,
+          cents: 0,
+          noteName: null,
+          confidence: 0,
+        });
+        return;
+      }
+
+      const tick = () => {
+        if (fadeStartRef.current === null) {
+          return;
+        }
+
+        const elapsed = getMonotonicTime() - fadeStartRef.current;
+        const progress = Math.min(elapsed / HOLD_LAST_STABLE_MS, 1);
+        const nextConfidence = fadeBaselineRef.current * (1 - progress);
+
+        commitPitch({ confidence: nextConfidence });
+
+        if (progress >= 1) {
+          commitPitch({
+            midi: null,
+            cents: 0,
+            noteName: null,
+            confidence: 0,
+          });
+          clearFade();
+          return;
+        }
+
+        fadeFrameRef.current = requestAnimationFrame(tick);
+      };
+
+      fadeFrameRef.current = requestAnimationFrame(tick);
+    },
+    [clearFade, commitPitch],
+  );
 
   const clearPendingRestart = React.useCallback(() => {
     if (restartTimeoutRef.current) {
@@ -322,34 +463,65 @@ export function usePitchDetection(): PitchDetectionStatus {
       }
 
       const timestamp = event.timestamp ?? getMonotonicTime();
+      clearFade();
 
-      if (!event.isValid) {
-        actions.setPitch({
-          midi: null,
-          cents: 0,
-          noteName: null,
-          confidence: event.probability ?? 0,
-          updatedAt: timestamp
-        });
-        actions.setAngles({ inner: 0 });
+      const confidence = clampConfidence(event.probability ?? 0);
+      const confidenceGate = confidenceGateRef.current ?? detectorOptions.threshold ?? 0.12;
+
+      if (!event.isValid || confidence < confidenceGate) {
+        startHoldFade(timestamp);
         return;
       }
 
+      const resolvedMidi = event.midi;
+      const roundedMidi = Math.round(resolvedMidi);
+      const stableMidi =
+        stablePitchRef.current.midi === null
+          ? null
+          : Math.round(stablePitchRef.current.midi);
       const noteName: NoteName = (event.noteName as NoteName | undefined) ??
-        midiToNoteName(Math.round(event.midi));
+        midiToNoteName(roundedMidi);
 
-      actions.setPitch({
-        midi: event.midi,
+      if (stableMidi === null || stableMidi === roundedMidi) {
+        candidateRef.current = null;
+        commitPitch({
+          midi: resolvedMidi,
+          cents: event.cents,
+          noteName,
+          confidence,
+          updatedAt: timestamp,
+        });
+        return;
+      }
+
+      const existingCandidate = candidateRef.current;
+      if (existingCandidate && Math.round(existingCandidate.midi) === roundedMidi) {
+        candidateRef.current = {
+          ...existingCandidate,
+          cents: event.cents,
+          confidence,
+        };
+
+        if (timestamp - existingCandidate.startedAt >= NOTE_CHANGE_HYSTERESIS_MS) {
+          commitPitch({
+            midi: resolvedMidi,
+            cents: event.cents,
+            noteName,
+            confidence,
+            updatedAt: timestamp,
+          });
+          candidateRef.current = null;
+        }
+        return;
+      }
+
+      candidateRef.current = {
+        midi: resolvedMidi,
         cents: event.cents,
+        confidence,
         noteName,
-        confidence: event.probability,
-        updatedAt: timestamp
-      });
-
-      actions.setAngles({
-        outer: midiToOuterDegrees(event.midi),
-        inner: centsToDegrees(event.cents)
-      });
+        startedAt: timestamp,
+      };
     };
 
     const subscription = PitchDetector.addPitchListener(handlePitch);
@@ -362,7 +534,16 @@ export function usePitchDetection(): PitchDetectionStatus {
       subscription.remove();
       void stopDetector();
     };
-  }, [actions, availability, permission, startDetector, stopDetector]);
+  }, [
+    availability,
+    clearFade,
+    commitPitch,
+    detectorOptions.threshold,
+    permission,
+    startDetector,
+    startHoldFade,
+    stopDetector,
+  ]);
 
   React.useEffect(() => {
     if (!availability) {
@@ -451,6 +632,8 @@ export function usePitchDetection(): PitchDetectionStatus {
   }, [availability, clearPendingRestart, permission, scheduleRestart, stopDetector]);
 
   React.useEffect(() => () => clearPendingRestart(), [clearPendingRestart]);
+
+  React.useEffect(() => () => clearFade(), [clearFade]);
 
   React.useEffect(() => {
     if (!availability) {

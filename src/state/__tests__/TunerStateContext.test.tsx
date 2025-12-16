@@ -56,10 +56,10 @@ describe('TunerProvider persistence', () => {
       const { state, actions } = useTuner();
 
       React.useEffect(() => {
-        if (state.settings.a4Calibration === 438) {
+        if (state.settings.lockThreshold === 3.2) {
           actions.updateSettings({ manualMode: true, lockThreshold: 2.5 });
         }
-      }, [actions, state.settings.a4Calibration]);
+      }, [actions, state.settings.lockThreshold]);
 
       return <Text testID="mode">{state.settings.manualMode ? 'manual' : 'auto'}</Text>;
     };
@@ -81,7 +81,6 @@ describe('TunerProvider persistence', () => {
     expect(lastCall).toBeDefined();
     const [, payload] = lastCall!;
     expect(JSON.parse(payload)).toEqual({
-      a4Calibration: 438,
       sensitivityRange: 25,
       sensitivityProfile: 'low-latency',
       lockThreshold: 2.5,

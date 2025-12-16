@@ -36,8 +36,6 @@ export const SENSITIVITY_PRESETS = [
 export type SensitivityRange = (typeof SENSITIVITY_PRESETS)[number]['range'];
 export type SensitivityPresetId = (typeof SENSITIVITY_PRESETS)[number]['id'];
 
-const A4_MIN = 415;
-const A4_MAX = 466;
 const LOCK_THRESHOLD_MIN = 1;
 const LOCK_THRESHOLD_MAX = 8;
 const LOCK_DWELL_MIN = 0.2;
@@ -95,7 +93,6 @@ export interface SpringRuntimeState extends SpringState {
  * User-configurable settings that influence the tuner behaviour.
  */
 export interface TunerSettings {
-  a4Calibration: number;
   sensitivityRange: SensitivityRange;
   sensitivityProfile: SensitivityPresetId;
   lockThreshold: number;
@@ -147,7 +144,6 @@ const DEFAULT_SENSITIVITY_PRESET = SENSITIVITY_PRESETS[1];
 
 type PersistentSettings = Pick<
   TunerSettings,
-  | 'a4Calibration'
   | 'sensitivityRange'
   | 'sensitivityProfile'
   | 'lockThreshold'
@@ -208,11 +204,6 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
       ? findPresetById(payload.sensitivityProfile)
       : undefined;
 
-  if (payload.a4Calibration !== undefined) {
-    const calibrated = Math.round(payload.a4Calibration);
-    result.a4Calibration = clampNumber(calibrated, A4_MIN, A4_MAX);
-  }
-
   if (payload.sensitivityRange !== undefined) {
     const matchedPreset = findPresetByRange(payload.sensitivityRange as SensitivityRange);
     if (matchedPreset) {
@@ -253,7 +244,6 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
 };
 
 const extractPersistentSettings = (settings: TunerSettings): PersistentSettings => ({
-  a4Calibration: settings.a4Calibration,
   sensitivityRange: settings.sensitivityRange,
   sensitivityProfile: settings.sensitivityProfile,
   lockThreshold: settings.lockThreshold,
@@ -303,7 +293,6 @@ const initialState: TunerState = {
     targetAngle: 0
   },
   settings: {
-    a4Calibration: 440,
     sensitivityRange: DEFAULT_SENSITIVITY_PRESET.range,
     sensitivityProfile: DEFAULT_SENSITIVITY_PRESET.id,
     lockThreshold: 2,

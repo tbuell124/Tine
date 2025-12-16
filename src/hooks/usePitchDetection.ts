@@ -63,6 +63,11 @@ export function usePitchDetection(): PitchDetectionStatus {
   const subscriptionRef = React.useRef<{ remove: () => void } | null>(null);
 
   const openSettings = React.useCallback(async () => {
+    if (Platform.OS === 'web') {
+      console.warn('Opening browser settings is not supported from the tuner UI.');
+      return;
+    }
+
     try {
       await Linking.openSettings();
     } catch (error) {
@@ -140,18 +145,43 @@ export function usePitchDetection(): PitchDetectionStatus {
       }
     }
 
+    if (Platform.OS === 'android') {
+      try {
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
+          title: 'Allow Tine to use the microphone',
+          message: 'Tine needs microphone access to analyse your instrument in real time.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny'
+        });
+        const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        setPermission(granted ? 'granted' : 'denied');
+        return granted;
+      } catch (error) {
+        console.warn('Microphone permission request failed on Android', error);
+        setPermission('denied');
+        return false;
+      }
+    }
+
     try {
-      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, {
-        title: 'Allow Tine to use the microphone',
-        message: 'Tine needs microphone access to analyse your instrument in real time.',
-        buttonPositive: 'Allow',
-        buttonNegative: 'Deny'
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        setPermission('denied');
+        return false;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
       });
-      const granted = result === PermissionsAndroid.RESULTS.GRANTED;
-      setPermission(granted ? 'granted' : 'denied');
-      return granted;
+
+      stream.getTracks().forEach((track) => track.stop());
+      setPermission('granted');
+      return true;
     } catch (error) {
-      console.warn('Microphone permission request failed on Android', error);
+      console.warn('Microphone permission request failed on web', error);
       setPermission('denied');
       return false;
     }
@@ -180,13 +210,49 @@ export function usePitchDetection(): PitchDetectionStatus {
           return;
         }
 
-        const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
-        if (hasPermission) {
-          setPermission('granted');
+        if (Platform.OS === 'android') {
+          const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+          if (hasPermission) {
+            setPermission('granted');
+            return;
+          }
+
+          setPermission('unknown');
           return;
         }
 
-        setPermission('unknown');
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+          setPermission('denied');
+          return;
+        }
+
+        const webPermission = await (async (): Promise<PermissionState> => {
+          if (typeof navigator === 'undefined' || !('permissions' in navigator)) {
+            return 'unknown';
+          }
+
+          try {
+            const result = await (navigator as Navigator & { permissions: { query: any } }).permissions.query({
+              // PermissionName is available in lib.dom but we fall back to string to avoid TS lib drift.
+              name: 'microphone' as PermissionName,
+            });
+
+            if (result.state === 'granted') {
+              return 'granted';
+            }
+
+            if (result.state === 'denied') {
+              return 'denied';
+            }
+
+            return 'unknown';
+          } catch (error) {
+            console.warn('Unable to query browser microphone permission', error);
+            return 'unknown';
+          }
+        })();
+
+        setPermission(webPermission);
       } catch (error) {
         console.warn('Unable to verify microphone permission', error);
         setPermission('denied');

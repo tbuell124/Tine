@@ -25,6 +25,7 @@
     "expo-haptics": "~15.0.7",
     "expo-sensors": "~15.0.7",
     "expo-status-bar": "~3.0.8",
+    "pitchy": "^4.0.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.82.0",

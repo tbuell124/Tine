@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { usePitchDetection } from '@hooks/usePitchDetection';
 import { MicPermissionScreen } from '@components/MicPermissionScreen';
@@ -62,15 +61,23 @@ export const TunerScreen: React.FC = () => {
     [deviation, indicatorTravel]
   );
 
-  const indicatorX = useSharedValue(0);
+  const indicatorX = React.useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
-    indicatorX.value = withTiming(targetTranslation, { duration: 120 });
+    Animated.timing(indicatorX, {
+      toValue: targetTranslation,
+      duration: 120,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
   }, [indicatorX, targetTranslation]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-    backgroundColor: indicatorColor
-  }));
+  const indicatorStyle = React.useMemo(
+    () => ({
+      transform: [{ translateX: indicatorX }],
+      backgroundColor: indicatorColor
+    }),
+    [indicatorColor, indicatorX]
+  );
 
   const centerZoneColor = isInTune ? '#14532d' : '#3f0c0c';
   const meterShellColor = isInTune ? '#0b1224' : '#2b0b0b';

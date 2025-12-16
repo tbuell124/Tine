@@ -4,6 +4,21 @@ This guide walks through preparing, building, and shipping the Android version o
 
 ---
 
+## 0. Quickstart (first successful build)
+
+1. Install Android Studio Hedgehog or newer with SDK Platforms 34/35, Build-Tools 35.0.0, and NDK r26c (see [prerequisites](#1-prerequisites-checklist)).
+2. Clone the repo, select Node 20 or 22, and run `npm install`.
+3. Sign in to Expo (`npx expo login`) if using EAS builds.
+4. Set `expo.android.package`, `expo.android.versionCode`, and `expo.version` in `app.json`.
+5. Run automated checks: `npm run lint`, `npm run test`, and `npm run format:check`.
+6. Create or update `eas.json`, then build an internal APK: `eas build --platform android --profile preview`.
+7. Upload the resulting APK/AAB to Google Play Internal Testing (or use `eas submit --platform android --latest`).
+8. Add tester emails in Play Console, accept the invitation on a device, and verify microphone permission + tuning flow.
+
+Use the detailed sections below for explanations, alternatives, and troubleshooting.
+
+---
+
 ## 1. Prerequisites checklist
 
 | Requirement | Details | Verification |

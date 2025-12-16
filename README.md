@@ -133,7 +133,7 @@ Live reload is enabled by default. Update files in `src/` and watch changes refr
 .
 ├── android/            # Native Android host project and audio bridge scaffolding
 ├── assets/             # App icons, splash art, and marketing imagery
-├── docs/               # Platform deployment guides (iOS and Android)
+├── docs/               # Platform deployment guides (iOS, Android, and Web)
 ├── ios/                # Native iOS host project and audio bridge scaffolding
 ├── src/                # TypeScript source (components, hooks, screens, theming)
 ├── App.tsx             # Entry point for Expo Router
@@ -168,8 +168,9 @@ Detailed, step-by-step release playbooks live in:
 
 - [`docs/iOS Deployment Guide.md`](./docs/iOS%20Deployment%20Guide.md)
 - [`docs/Android Deployment Guide.md`](./docs/Android%20Deployment%20Guide.md)
+- [`docs/Web Deployment Guide.md`](./docs/Web%20Deployment%20Guide.md)
 
-Each guide covers credential setup, build tooling, store submissions, and post-release monitoring.
+Each guide covers credential setup, build tooling, distribution steps, and post-release monitoring.
 
 ## Troubleshooting
 

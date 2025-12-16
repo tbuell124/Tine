@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
 
 import { TunerScreen } from '@components/TunerScreen';
+import { NotificationSurface } from '@components/NotificationSurface';
 import { TunerProvider } from '@state/TunerStateContext';
 import { NotificationProvider } from '@state/NotificationContext';
 
@@ -13,6 +14,7 @@ export default function App(): JSX.Element {
         <TunerProvider>
           <View style={styles.container}>
             <TunerScreen />
+            <NotificationSurface />
           </View>
         </TunerProvider>
       </GestureHandlerRootView>

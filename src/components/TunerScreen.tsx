@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { usePitchDetection } from '@hooks/usePitchDetection';
+import { MicPermissionScreen } from '@components/MicPermissionScreen';
 import { useTuner } from '@state/TunerStateContext';
 import { midiToNoteName } from '@utils/music';
 
@@ -11,9 +12,21 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 export const TunerScreen: React.FC = () => {
-  usePitchDetection();
+  const { permission, requestPermission, openSettings } = usePitchDetection();
+  const showPermissionScreen = permission === 'denied';
   const { state } = useTuner();
   const { width } = useWindowDimensions();
+
+  if (showPermissionScreen) {
+    return (
+      <MicPermissionScreen
+        onOpenSettings={openSettings}
+        onRequestPermission={() => {
+          void requestPermission();
+        }}
+      />
+    );
+  }
 
   const deviation = clamp(state.pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
   const isInTune = state.pitch.midi !== null && Math.abs(state.pitch.cents) <= 3;

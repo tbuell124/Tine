@@ -30,6 +30,7 @@ export interface PitchDetectionStatus {
   available: boolean;
   permission: PermissionState;
   requestPermission: () => Promise<boolean>;
+  openSettings: () => Promise<void>;
 }
 
 const normaliseDegrees = (angle: number): number => {
@@ -66,6 +67,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   const manualModeRef = React.useRef(state.settings.manualMode);
   const runningRef = React.useRef(false);
   const permissionAlertRef = React.useRef(false);
+  const restartTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const detectorOptions = React.useMemo(
     () => getDetectorOptionsForSettings(state.settings),
     [state.settings]
@@ -82,6 +84,37 @@ export function usePitchDetection(): PitchDetectionStatus {
       logger.warn('permission', 'Failed to open system settings', { error });
     }
   }, []);
+
+  const clearPendingRestart = React.useCallback(() => {
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const configureAudioSession = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+          interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+          shouldDuckAndroid: false,
+          staysActiveInBackground: false,
+          playThroughEarpieceAndroid: false
+        });
+      } catch (error) {
+        logger.warn('audio', 'Failed to configure audio session', { error });
+      }
+    };
+
+    void configureAudioSession();
+
+    return () => {
+      clearPendingRestart();
+    };
+  }, [clearPendingRestart]);
 
   const requestPermission = React.useCallback(async () => {
     if (Platform.OS === 'ios') {
@@ -266,6 +299,18 @@ export function usePitchDetection(): PitchDetectionStatus {
     }
   }, [availability, permission, detectorOptions, requestPermission, showNotification]);
 
+  const scheduleRestart = React.useCallback(() => {
+    if (permission !== 'granted') {
+      return;
+    }
+
+    clearPendingRestart();
+    restartTimeoutRef.current = setTimeout(() => {
+      restartTimeoutRef.current = null;
+      void startDetector();
+    }, 400);
+  }, [clearPendingRestart, permission, startDetector]);
+
   React.useEffect(() => {
     if (!availability) {
       return;
@@ -324,6 +369,94 @@ export function usePitchDetection(): PitchDetectionStatus {
       return;
     }
 
+    const audioModule = Audio as unknown as Record<string, any>;
+
+    const handleInterruption = (event: any) => {
+      const rawType = event?.type ?? event?.interruptionType ?? event?.interruption ?? event?.state;
+      const normalised = typeof rawType === 'string' ? rawType.toLowerCase() : rawType;
+      const isBegin =
+        normalised === 'began' ||
+        normalised === 'begin' ||
+        normalised === 'start' ||
+        normalised === 'started' ||
+        normalised === 'duck' ||
+        event?.active === false ||
+        event?.isActive === false;
+      const isEnd =
+        normalised === 'ended' ||
+        normalised === 'end' ||
+        normalised === 'resume' ||
+        normalised === 'unduck' ||
+        event?.active === true ||
+        event?.isActive === true;
+      const handled = isBegin || isEnd;
+
+      if (isBegin || !isEnd) {
+        clearPendingRestart();
+        void stopDetector();
+      }
+
+      if ((isEnd || !handled) && permission === 'granted') {
+        scheduleRestart();
+      }
+    };
+
+    const handleRouteChange = () => {
+      if (permission !== 'granted') {
+        return;
+      }
+
+      clearPendingRestart();
+      void stopDetector();
+      scheduleRestart();
+    };
+
+    const attachListener = (
+      methodNames: string[],
+      handler: (event: unknown) => void,
+    ): (() => void) | undefined => {
+      for (const name of methodNames) {
+        const candidate = audioModule?.[name];
+        if (typeof candidate === 'function') {
+          const subscription = candidate(handler);
+          return () => {
+            if (typeof subscription === 'function') {
+              subscription();
+              return;
+            }
+
+            if (subscription?.remove) {
+              subscription.remove();
+            }
+          };
+        }
+      }
+
+      return undefined;
+    };
+
+    const removeInterruption = attachListener(
+      ['addAudioInterruptionListener', 'setAudioSessionInterruptionListener'],
+      handleInterruption,
+    );
+    const removeRouteChange = attachListener(
+      ['addAudioRouteChangeListener', 'addAudioRoutesChangeListener', 'addAudioDeviceChangeListener'],
+      handleRouteChange,
+    );
+
+    return () => {
+      removeInterruption?.();
+      removeRouteChange?.();
+    };
+  }, [availability, clearPendingRestart, permission, scheduleRestart, stopDetector]);
+
+  React.useEffect(() => () => clearPendingRestart(), [clearPendingRestart]);
+
+  React.useEffect(() => {
+    if (!availability) {
+      return;
+    }
+
     if (permission !== 'granted') {
       void stopDetector();
       return;
@@ -339,25 +472,28 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (permission !== 'granted') {
+        clearPendingRestart();
         return;
       }
 
       if (nextState === 'active') {
-        void startDetector();
+        scheduleRestart();
       } else if (nextState === 'background' || nextState === 'inactive') {
+        clearPendingRestart();
         void stopDetector();
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
+      clearPendingRestart();
       subscription.remove();
     };
-  }, [availability, permission, startDetector, stopDetector]);
+  }, [availability, clearPendingRestart, permission, scheduleRestart, startDetector, stopDetector]);
 
   return React.useMemo(
-    () => ({ available: availability, permission, requestPermission }),
-    [availability, permission, requestPermission]
+    () => ({ available: availability, permission, requestPermission, openSettings: openSystemSettings }),
+    [availability, openSystemSettings, permission, requestPermission]
   );
 }
 

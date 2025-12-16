@@ -33,12 +33,23 @@ export const TunerScreen: React.FC = () => {
   const indicatorColor = isInTune ? '#22c55e' : '#ef4444';
 
   const noteLabel = React.useMemo(() => {
+    const formatStem = (note: string): string => {
+      const match = note.match(/^([A-G])([#b]?)/i);
+      if (!match) {
+        return note;
+      }
+
+      const [, letter, accidental] = match;
+      const accidentalSymbol = accidental === '#' ? '♯' : accidental === 'b' ? '♭' : '';
+      return `${letter.toUpperCase()}${accidentalSymbol}`;
+    };
+
     if (state.pitch.noteName) {
-      return state.pitch.noteName.toUpperCase();
+      return formatStem(state.pitch.noteName);
     }
 
     if (state.pitch.midi !== null) {
-      return midiToNoteName(Math.round(state.pitch.midi)).toUpperCase();
+      return formatStem(midiToNoteName(Math.round(state.pitch.midi)));
     }
 
     return '—';

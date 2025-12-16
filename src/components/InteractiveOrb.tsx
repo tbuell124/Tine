@@ -1,15 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Canvas, Circle, LinearGradient, vec } from '@shopify/react-native-skia';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  runOnJS,
-  useAnimatedGestureHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring
-} from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedGestureHandler } from 'react-native-reanimated';
 import {
   PanGestureHandler,
   PanGestureHandlerGestureEvent
@@ -19,8 +11,6 @@ import { useSkiaCircle } from '@hooks/useSkiaCircle';
 
 const CIRCLE_RADIUS = 48;
 
-const AnimatedText = Animated.createAnimatedComponent(Animated.Text);
-
 /**
  * InteractiveOrb renders the Skia canvas and gesture handler wiring that powers the
  * draggable gradient orb showcased on the home screen.
@@ -28,17 +18,6 @@ const AnimatedText = Animated.createAnimatedComponent(Animated.Text);
 const InteractiveOrbComponent: React.FC = () => {
   // Track the circle center inside Skia's value system for zero-copy updates.
   const circle = useSkiaCircle({ x: 160, y: 160 });
-  // Shared value controls the informational text fade-in animation.
-  const infoOpacity = useSharedValue(0);
-
-  React.useEffect(() => {
-    infoOpacity.value = withSpring(1, { damping: 15, stiffness: 120 });
-  }, [infoOpacity]);
-
-  // Bind the shared value to a React Native Reanimated style.
-  const animatedInfoStyle = useAnimatedStyle(() => ({
-    opacity: infoOpacity.value
-  }));
 
   // Gesture handler updates the Skia circle through `runOnJS` so the canvas reacts
   // immediately to user input.
@@ -65,9 +44,6 @@ const InteractiveOrbComponent: React.FC = () => {
           </Canvas>
         </View>
       </PanGestureHandler>
-      <AnimatedText entering={FadeIn.delay(120)} exiting={FadeOut} style={[styles.instructions, animatedInfoStyle]}>
-        Drag anywhere on the canvas to move the gradient orb.
-      </AnimatedText>
     </View>
   );
 };
@@ -93,12 +69,5 @@ const styles = StyleSheet.create({
   },
   canvas: {
     flex: 1
-  },
-  instructions: {
-    marginTop: 32,
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#0f172a',
-    fontWeight: '600'
   }
 });

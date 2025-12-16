@@ -29,6 +29,7 @@ export type PermissionState = 'unknown' | 'granted' | 'denied';
 export interface PitchDetectionStatus {
   available: boolean;
   permission: PermissionState;
+  listening: boolean;
   requestPermission: () => Promise<boolean>;
   openSettings: () => Promise<void>;
 }
@@ -141,6 +142,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   const { showNotification } = useNotifications();
   const availability = isPitchDetectorModuleAvailable;
   const [permission, setPermission] = React.useState<PermissionState>('unknown');
+  const [listening, setListening] = React.useState(false);
   const manualModeRef = React.useRef(state.settings.manualMode);
   const detectorOptions = React.useMemo(
     () => getDetectorOptionsForSettings(state.settings),
@@ -178,6 +180,12 @@ export function usePitchDetection(): PitchDetectionStatus {
   React.useEffect(() => {
     manualModeRef.current = state.settings.manualMode;
   }, [state.settings.manualMode]);
+
+  React.useEffect(() => {
+    if (!availability || permission !== 'granted') {
+      setListening(false);
+    }
+  }, [availability, permission]);
 
   React.useEffect(() => {
     const clampedGate = clampGate(detectorOptions.threshold);
@@ -576,6 +584,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   const stopDetector = React.useCallback(async () => {
     if (!availability || !runningRef.current) {
       await deactivateAudioSession();
+      setListening(false);
       return;
     }
 
@@ -586,6 +595,7 @@ export function usePitchDetection(): PitchDetectionStatus {
       logger.warn('detector_stop', 'Failed to stop pitch detector', { error });
     } finally {
       runningRef.current = false;
+      setListening(false);
       await deactivateAudioSession();
     }
   }, [availability, deactivateAudioSession]);
@@ -599,6 +609,7 @@ export function usePitchDetection(): PitchDetectionStatus {
       await PitchDetector.start(detectorOptions);
       logger.info('detector_start', 'Started pitch detector', detectorOptions);
       runningRef.current = true;
+      setListening(true);
     } catch (error) {
       logger.error('detector_start', 'Failed to start pitch detector', { error, detectorOptions });
       const message = error instanceof Error ? error.message : String(error);
@@ -621,6 +632,7 @@ export function usePitchDetection(): PitchDetectionStatus {
           void startDetector();
         }
       });
+      setListening(false);
     }
   }, [availability, permission, detectorOptions, requestPermission, showNotification]);
 
@@ -883,8 +895,14 @@ export function usePitchDetection(): PitchDetectionStatus {
   }, [availability, clearPendingRestart, permission, scheduleRestart, startDetector, stopDetector]);
 
   return React.useMemo(
-    () => ({ available: availability, permission, requestPermission, openSettings: openSystemSettings }),
-    [availability, openSystemSettings, permission, requestPermission]
+    () => ({
+      available: availability,
+      permission,
+      listening,
+      requestPermission,
+      openSettings: openSystemSettings,
+    }),
+    [availability, listening, openSystemSettings, permission, requestPermission]
   );
 }
 

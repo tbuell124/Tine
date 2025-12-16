@@ -80,7 +80,7 @@ const HOLD_LAST_STABLE_MS = 520;
 const ADAPTIVE_WINDOW_MS = 8000;
 const ADAPTIVE_MIN_FRAMES = 5;
 const ADAPTIVE_STABLE_CONFIDENCE = 0.45;
-const ADAPTIVE_GATE_MIN = 0.05;
+const ADAPTIVE_GATE_MIN = 0.07;
 const ADAPTIVE_GATE_MAX = 0.35;
 
 type AdaptiveProfileId = 'low' | 'mid' | 'high';

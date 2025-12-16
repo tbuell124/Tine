@@ -14,7 +14,8 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 export const TunerScreen: React.FC = () => {
-  const { permission, requestPermission, openSettings, pitch, listening } = usePitchDetection();
+  const { available, permission, requestPermission, openSettings, pitch, listening } =
+    usePitchDetection();
   const { width } = useWindowDimensions();
   const [now, setNow] = React.useState(getMonotonicTime());
 
@@ -25,6 +26,18 @@ export const TunerScreen: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  if (!available) {
+    return (
+      <View style={styles.unavailableContainer}>
+        <Text style={styles.unavailableTitle}>Pitch detector unavailable</Text>
+        <Text style={styles.unavailableMessage}>
+          Build or install the custom dev client to load the native pitch detector. Expo Go lacks
+          the audio bridge needed for live tuning.
+        </Text>
+      </View>
+    );
+  }
 
   if (permission === 'unknown') {
     return (
@@ -289,5 +302,24 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontWeight: '700',
     fontSize: 14
+  },
+  unavailableContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#020617'
+  },
+  unavailableTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#e2e8f0'
+  },
+  unavailableMessage: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    color: '#cbd5e1'
   }
 });

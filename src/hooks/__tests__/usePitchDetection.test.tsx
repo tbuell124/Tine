@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Platform, AppState } from 'react-native';
 
 import type { PitchEvent } from '@native/modules/specs/PitchDetectorNativeModule';
@@ -94,6 +94,24 @@ describe('usePitchDetection integration', () => {
 
     expect(await findByText('Microphone access needed')).toBeOnTheScreen();
     expect(await findByText('Open Settings')).toBeOnTheScreen();
+  });
+
+  it('explains the need for microphone access before requesting permission', async () => {
+    const { __setPermissionState, __requestPermissionsMock } = jest.requireMock('expo-av');
+
+    __setPermissionState({ status: 'undetermined', granted: false, canAskAgain: true });
+
+    const { findByText } = render(<TunerScreen />);
+
+    const promptTitle = await findByText('Allow microphone for live tuning');
+    expect(promptTitle).toBeOnTheScreen();
+
+    await act(async () => {
+      __setPermissionState({ status: 'granted', granted: true, canAskAgain: true });
+      fireEvent.press(await findByText('Enable microphone access'));
+    });
+
+    await waitFor(() => expect(__requestPermissionsMock).toHaveBeenCalled());
   });
 
   it('starts the detector when permission is granted', async () => {

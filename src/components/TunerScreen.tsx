@@ -15,7 +15,6 @@ const clamp = (value: number, min: number, max: number): number =>
 
 export const TunerScreen: React.FC = () => {
   const { permission, requestPermission, openSettings, pitch, listening } = usePitchDetection();
-  const showPermissionScreen = permission === 'denied';
   const { width } = useWindowDimensions();
   const [now, setNow] = React.useState(getMonotonicTime());
 
@@ -27,9 +26,21 @@ export const TunerScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (showPermissionScreen) {
+  if (permission === 'unknown') {
     return (
       <MicPermissionScreen
+        mode="request"
+        onRequestPermission={() => {
+          void requestPermission();
+        }}
+      />
+    );
+  }
+
+  if (permission === 'denied') {
+    return (
+      <MicPermissionScreen
+        mode="denied"
         onOpenSettings={openSettings}
         onRequestPermission={() => {
           void requestPermission();

@@ -171,8 +171,12 @@ export function usePitchDetection(): PitchDetectionStatus {
             return;
           }
 
-          const result = await requestPermission();
-          setPermission(result ? 'granted' : 'denied');
+          if (status === 'denied') {
+            setPermission('denied');
+            return;
+          }
+
+          setPermission('unknown');
           return;
         }
 
@@ -182,8 +186,7 @@ export function usePitchDetection(): PitchDetectionStatus {
           return;
         }
 
-        const granted = await requestPermission();
-        setPermission(granted ? 'granted' : 'denied');
+        setPermission('unknown');
       } catch (error) {
         console.warn('Unable to verify microphone permission', error);
         setPermission('denied');
@@ -191,7 +194,7 @@ export function usePitchDetection(): PitchDetectionStatus {
     };
 
     void ensurePermission();
-  }, [permission, requestPermission]);
+  }, [permission]);
 
   React.useEffect(() => {
     if (!availability) {

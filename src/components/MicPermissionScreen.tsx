@@ -1,42 +1,62 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+type MicPermissionScreenMode = 'request' | 'denied';
+
 export interface MicPermissionScreenProps {
+  /** Defines whether the screen is prompting for the first time or after a denial. */
+  mode: MicPermissionScreenMode;
   /** Opens the system settings screen so the user can re-enable microphone access. */
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
   /** Optional retry hook to re-trigger the permission flow without leaving the app. */
   onRequestPermission?: () => void;
 }
 
 export const MicPermissionScreen: React.FC<MicPermissionScreenProps> = ({
+  mode,
   onOpenSettings,
   onRequestPermission,
 }) => {
+  const isDenied = mode === 'denied';
+
+  const title = isDenied ? 'Microphone access needed' : 'Allow microphone for live tuning';
+  const message = isDenied
+    ? 'Tine pauses tuning when microphone access is disabled. Re-enable the mic to resume live pitch detection.'
+    : 'Tine listens to your instrument through the microphone to show pitch in real time. Enable audio access to start tuning instantly.';
+
   return (
     <View style={styles.container}>
       <View style={styles.headerBadge}>
         <Text style={styles.headerIcon}>🎤</Text>
       </View>
-      <Text style={styles.title}>Microphone access needed</Text>
-      <Text style={styles.message}>
-        Tine pauses tuning when microphone access is disabled. Re-enable the mic to resume live
-        pitch detection.
-      </Text>
-      <Pressable
-        onPress={onOpenSettings}
-        style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Open system settings to enable microphone access"
-      >
-        <Text style={styles.primaryLabel}>Open Settings</Text>
-      </Pressable>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.message}>{message}</Text>
+      {isDenied ? (
+        <Pressable
+          onPress={onOpenSettings}
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open system settings to enable microphone access"
+        >
+          <Text style={styles.primaryLabel}>Open Settings</Text>
+        </Pressable>
+      ) : null}
       {onRequestPermission ? (
         <Pressable
           onPress={onRequestPermission}
+          style={({ pressed }) =>
+            isDenied
+              ? [styles.secondaryButton, pressed && styles.secondaryButtonPressed]
+              : [styles.primaryButton, pressed && styles.primaryButtonPressed]
+          }
           accessibilityRole="button"
-          accessibilityLabel="Retry microphone permission request"
+          accessibilityLabel={
+            isDenied ? 'Retry microphone permission request' : 'Enable microphone access for live tuning'
+          }
         >
-          <Text style={styles.secondaryLabel}>Retry permission request</Text>
+          <Text style={isDenied ? styles.secondaryLabel : styles.primaryLabel}>
+            {isDenied ? 'Retry permission request' : 'Enable microphone access'}
+          </Text>
         </Pressable>
       ) : null}
     </View>
@@ -95,6 +115,13 @@ const styles = StyleSheet.create({
   primaryButtonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+  },
+  secondaryButtonPressed: {
+    opacity: 0.85,
   },
   primaryLabel: {
     color: '#0f172a',

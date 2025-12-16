@@ -2,7 +2,7 @@
 
 ## Repo Map (at a glance)
 - `/App.tsx` — App entry, providers.
-- `/src/components/` — Skia/gesture UI (e.g., `TunerScreen`, `TunerFace`).
+- `/src/components/` — UI surfaces (e.g., `TunerScreen`).
 - `/src/state/` — Reducer/context for tuner state, settings persistence, notifications.
 - `/src/hooks/` — Lifecycles for pitch detection and native module wiring.
 - `/src/native/` — TurboModule contract plus DSP reference implementation.
@@ -36,13 +36,6 @@
 - Network: None.
 - Errors: Permission denial triggers actionable notifications and prevents detector start; exceptions logged.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
 
-### Flow: Manual tuning mode (coarse note selection)
-- Start: Engaging the wheel gesture sets manual mode, pausing detector-driven updates; outer rotation sets target MIDI/note manually.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) and [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
-- Steps: Manual gestures adjust outer angle and derived MIDI; cents reset to 0 until manual state ends.【See [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
-- Data: Tuner state (pitch/angles) updated from gesture handlers rather than detector.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
-- Network: None.
-- Errors: Not explicitly surfaced; gesture noise gated by thresholds in handler logic.【See [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
-
 ### Lifecycle (stop conditions and interruptions)
 - Detector start: initiated after microphone permission is granted in `usePitchDetection` when the app renders the primary screen.
 - Detector stop: called when dependencies change (e.g., cleanup on effect unmount) or when manual mode disables detector-driven updates in the hook logic.
@@ -55,7 +48,6 @@
 - **TunerScreen** (`src/components/TunerScreen.tsx`): Primary interface showing meter, note label, and color-coded in-tune feedback; initializes pitch detection hook and surfaces notifications.
 
 ### Key Components
-- **TunerFace**, **InnerWheel**, **OuterWheel**, **IndexIndicator**: Skia/gesture-driven dual-wheel UI for visualizing pitch class and cents; manual mode gestures and detents handled here.
 - **NotificationSurface** (provider-backed): Displays queued notifications from `NotificationContext` actions (hook implementations not shown in this snippet).
 - **NotificationProvider / TunerProvider**: Context providers for notifications and tuner state wrapping the app root.
 
@@ -83,9 +75,8 @@ App.tsx
   └─ Providers
       ├─ NotificationProvider (queue + surface)
       └─ TunerProvider (state reducer + persistence)
-          └─ TunerScreen (Skia UI)
-              ├─ usePitchDetection (permissions + native module lifecycle)
-              └─ TunerFace (gesture wheels + indicators)
+          └─ TunerScreen (meter + note readout)
+              └─ usePitchDetection (permissions + native module lifecycle)
 ```
 
 ### State Model (shapes defined in code)

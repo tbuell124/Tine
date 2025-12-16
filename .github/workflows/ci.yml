@@ -18,7 +18,9 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        # Skip optional dependencies like fsevents that require native builds on macOS
+        # to avoid node-gyp failures in the Linux CI environment.
+        run: npm install --no-optional --ignore-scripts
 
       - name: Run ESLint
         run: npm run lint

@@ -17,6 +17,8 @@ setThreshold(threshold: number): void;
 
 Events fire under the `onPitchData` name and carry `PitchEvent` payloads (`isValid`, `frequency`, `midi`, `cents`, `probability`, `noteName`). The JS client expects the module to emit data once `start` resolves and to reject `start` when the native bridge is missing.
 
+> **Heads up:** The archive omits the Objective-C/Swift and Kotlin bridge sources. When reintroducing them, ensure the TurboModule still honours the contract below while efficiently handling buffer queues and lifecycle transitions. Use lock-free buffers for ingress and aggressively deactivate the audio session whenever capture stops to avoid unnecessary battery drain on real devices.
+
 ## Shared DSP primitives
 
 * The native layer compiles `native/cpp/YinPitchDetector.{hpp,cpp}` and `native/cpp/FloatRingBuffer.hpp`. They provide the YIN algorithm and a single-producer/single-consumer ring buffer sized to `bufferSize * 4` frames.

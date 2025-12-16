@@ -215,6 +215,22 @@ export function usePitchDetection(): PitchDetectionStatus {
     fadeStartRef.current = null;
   }, []);
 
+  const deactivateAudioSession = React.useCallback(async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: false,
+        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+        shouldDuckAndroid: false,
+        staysActiveInBackground: false,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (error) {
+      logger.warn('audio', 'Failed to deactivate audio session', { error });
+    }
+  }, []);
+
   const updateAdaptiveProfile = React.useCallback(
     (midi: number, confidence: number, timestamp: number) => {
       if (!Number.isFinite(midi) || confidence < ADAPTIVE_STABLE_CONFIDENCE) {
@@ -559,6 +575,7 @@ export function usePitchDetection(): PitchDetectionStatus {
 
   const stopDetector = React.useCallback(async () => {
     if (!availability || !runningRef.current) {
+      await deactivateAudioSession();
       return;
     }
 
@@ -569,8 +586,9 @@ export function usePitchDetection(): PitchDetectionStatus {
       logger.warn('detector_stop', 'Failed to stop pitch detector', { error });
     } finally {
       runningRef.current = false;
+      await deactivateAudioSession();
     }
-  }, [availability]);
+  }, [availability, deactivateAudioSession]);
 
   const startDetector = React.useCallback(async () => {
     if (!availability || permission !== 'granted' || runningRef.current) {
@@ -711,6 +729,7 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     return () => {
       subscription.remove();
+      PitchDetector.removeAllListeners();
       void stopDetector();
     };
   }, [
@@ -815,6 +834,14 @@ export function usePitchDetection(): PitchDetectionStatus {
   React.useEffect(() => () => clearPendingRestart(), [clearPendingRestart]);
 
   React.useEffect(() => () => clearFade(), [clearFade]);
+
+  React.useEffect(
+    () => () => {
+      PitchDetector.removeAllListeners();
+      void deactivateAudioSession();
+    },
+    [deactivateAudioSession],
+  );
 
   React.useEffect(() => {
     if (!availability) {

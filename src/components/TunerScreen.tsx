@@ -1,76 +1,65 @@
 import React from 'react';
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions
-} from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { TunerFace } from './TunerFace';
 import { usePitchDetection } from '@hooks/usePitchDetection';
+import { useTuner } from '@state/TunerStateContext';
+import { midiToNoteName } from '@utils/music';
 
-const FACE_MARGIN = 48;
+const MAX_DEVIATION = 50;
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
 
 export const TunerScreen: React.FC = () => {
-  const { width, height } = useWindowDimensions();
-  const faceSize = React.useMemo(() => {
-    const minDimension = Math.min(width, height);
-    const available = Math.max(minDimension - FACE_MARGIN * 2, 240);
-    return Math.round(available);
-  }, [height, width]);
+  usePitchDetection();
+  const { state } = useTuner();
+  const { width } = useWindowDimensions();
 
-  const { available, permission, requestPermission } = usePitchDetection();
+  const deviation = clamp(state.pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
+  const isInTune = state.pitch.midi !== null && Math.abs(state.pitch.cents) <= 3;
+  const indicatorColor = isInTune ? '#22c55e' : '#ef4444';
 
-  const detectorBanner = React.useMemo(() => {
-    if (!available) {
-      return {
-        message: 'Pitch engine unavailable. Install the native module and rebuild the app.',
-        actionLabel: null
-      } as const;
+  const noteLabel = React.useMemo(() => {
+    if (state.pitch.noteName) {
+      return state.pitch.noteName.toUpperCase();
     }
 
-    if (permission === 'denied') {
-      return {
-        message:
-          Platform.OS === 'android'
-            ? 'Microphone access was denied. Grant permission to start tuning.'
-            : 'Microphone access is disabled. Enable it in Settings to continue tuning.',
-        actionLabel: 'Enable Microphone'
-      } as const;
+    if (state.pitch.midi !== null) {
+      return midiToNoteName(Math.round(state.pitch.midi)).toUpperCase();
     }
 
-    if (permission === 'unknown') {
-      return {
-        message: 'Microphone access is needed to start tuning.',
-        actionLabel: 'Grant Access'
-      } as const;
-    }
+    return '—';
+  }, [state.pitch.midi, state.pitch.noteName]);
 
-    return null;
-  }, [available, permission]);
+  const meterWidth = React.useMemo(() => Math.min(Math.max(width - 40, 220), 380), [width]);
+  const indicatorTravel = (meterWidth - 32) / 2;
+  const targetTranslation = React.useMemo(
+    () => (deviation / MAX_DEVIATION) * indicatorTravel,
+    [deviation, indicatorTravel]
+  );
+
+  const indicatorX = useSharedValue(0);
+  React.useEffect(() => {
+    indicatorX.value = withTiming(targetTranslation, { duration: 120 });
+  }, [indicatorX, targetTranslation]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+    backgroundColor: indicatorColor
+  }));
+
+  const centerZoneColor = isInTune ? '#14532d' : '#3f0c0c';
+  const meterShellColor = isInTune ? '#0b1224' : '#2b0b0b';
+  const meterBaseColor = isInTune ? '#0f172a' : '#401010';
 
   return (
     <View style={styles.screen}>
-      <View style={styles.faceContainer}>
-        <TunerFace size={faceSize} showDetentPegs />
+      <View style={[styles.meterShell, { width: meterWidth, backgroundColor: meterShellColor }]}>
+        <View style={[styles.meterBase, { backgroundColor: meterBaseColor }]} />
+        <View style={[styles.inTuneZone, { backgroundColor: centerZoneColor }]} />
+        <Animated.View style={[styles.indicator, indicatorStyle]} />
       </View>
-
-      {detectorBanner ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{detectorBanner.message}</Text>
-          {detectorBanner.actionLabel ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={requestPermission}
-              style={styles.bannerAction}
-            >
-              <Text style={styles.bannerActionText}>{detectorBanner.actionLabel}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      <Text style={[styles.noteLabel, { color: indicatorColor }]}>{noteLabel}</Text>
     </View>
   );
 };
@@ -80,42 +69,46 @@ export default TunerScreen;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#020617',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32
+    gap: 32,
+    paddingHorizontal: 20
   },
-  faceContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%'
-  },
-  banner: {
-    width: '100%',
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    backgroundColor: '#111b2f'
-  },
-  bannerText: {
-    color: '#bfdbfe',
-    fontSize: 13,
-    lineHeight: 18
-  },
-  bannerAction: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  meterShell: {
+    height: 32,
     borderRadius: 999,
-    backgroundColor: '#1d4ed8'
+    overflow: 'hidden',
+    backgroundColor: '#0b1224',
+    position: 'relative'
   },
-  bannerActionText: {
-    color: '#f8fafc',
-    fontWeight: '600'
+  meterBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0f172a',
+    opacity: 0.9
+  },
+  inTuneZone: {
+    ...StyleSheet.absoluteFillObject,
+    marginHorizontal: '35%',
+    borderRadius: 999,
+    opacity: 0.9
+  },
+  indicator: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    top: 2,
+    left: '50%',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 6
+  },
+  noteLabel: {
+    fontSize: 120,
+    fontWeight: '800',
+    letterSpacing: 6
   }
 });

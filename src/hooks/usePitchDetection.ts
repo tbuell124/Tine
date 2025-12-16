@@ -711,6 +711,7 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     return () => {
       subscription.remove();
+      PitchDetector.removeAllListeners();
       void stopDetector();
     };
   }, [

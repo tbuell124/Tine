@@ -26,7 +26,7 @@ Events fire under the `onPitchData` name and carry `PitchEvent` payloads (`isVal
 
 1. `ios/Tine/PitchDetectorModule.mm` subclasses `RCTEventEmitter`. `RCT_EXPORT_MODULE(PitchDetector)` matches the JavaScript name.
 2. `start` configures `AVAudioSession` with `.playAndRecord`, `.measurement`, a preferred sample rate of 48 kHz, and a 256-frame IO buffer before activating. It primes `AVAudioEngine`, installs an input tap that writes frames into `FloatRingBuffer`, and spins a `DispatchSourceTimer` on a background queue to drain `_bufferSize` frames into the YIN detector. Results are marshalled back to the main queue and emitted via `sendEventWithName("onPitchData", payload)`.
-3. `stop` removes the tap, cancels the drain timer, stops the engine, and deactivates the session with `NotifyOthersOnDeactivation` to play nicely with other audio apps.
+3. `stop` removes the tap, cancels the drain timer, stops the engine, and deactivates the session with `NotifyOthersOnDeactivation` to play nicely with other audio apps. Explicitly deactivate the session when idle to reduce battery drain instead of letting it linger in `Active`.
 4. `setThreshold` updates the detector threshold at runtime without restarting the stream.
 5. Overflow conditions and session errors are logged with `[PitchDetector]` prefixes to surface diagnostics in Xcode.
 
@@ -36,6 +36,13 @@ Events fire under the `onPitchData` name and carry `PitchEvent` payloads (`isVal
 2. `PitchDetectorBridge.cpp` exposes JNI entry points (`nativeStart`, `nativeStop`, `nativeSetThreshold`, `nativeSetListener`). Results from the detector attach to the JVM on-demand and call back into the Kotlin listener with `(ZDDDDLjava/lang/String;)V` payloads.
 3. `android/app/src/main/java/com/anonymous/tine/audio/PitchDetectorModule.kt` loads the `pitchdetector` shared library, wires the JNI surface into the React Native event emitter, and exposes `start`, `stop`, `setThreshold`, `addListener`, and `removeListeners` to JavaScript. `PitchDetectorPackage` registers the module with `MainApplication`.
 4. `CMakeLists.txt` under `android/app/src/main/cpp` builds `libpitchdetector.so`, linking against `aaudio` and `log`. Gradle’s `externalNativeBuild` block points to this script.
+
+## Buffer queue and lifecycle expectations
+
+* Keep the C++ `FloatRingBuffer` lock-free and preallocated; never allocate in the audio callback. When the platform delivers larger buffers than requested, enqueue without copies by indexing into the ring rather than reshaping the data.
+* Drain the queue on a background thread at `bufferSize` multiples to avoid starvation and minimise latency spikes. If the consumer lags, drop frames rather than blocking the producer.
+* On iOS, call `setActive(false, .notifyOthersOnDeactivation)` once the detector stops so the audio session releases hardware and power draw returns to baseline. On Android, close the `AAudioStream` promptly and relinquish the wake lock, if held.
+* Clear `NativeEventEmitter` listeners in `componentWillUnmount`/hook cleanups to avoid leaking references when the JS layer unmounts.
 
 ## Cross-platform event schema
 

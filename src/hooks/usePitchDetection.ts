@@ -77,6 +77,64 @@ const clampConfidence = (value: number): number => {
 
 const NOTE_CHANGE_HYSTERESIS_MS = 220;
 const HOLD_LAST_STABLE_MS = 520;
+const ADAPTIVE_WINDOW_MS = 8000;
+const ADAPTIVE_MIN_FRAMES = 5;
+const ADAPTIVE_STABLE_CONFIDENCE = 0.45;
+const ADAPTIVE_GATE_MIN = 0.05;
+const ADAPTIVE_GATE_MAX = 0.35;
+
+type AdaptiveProfileId = 'low' | 'mid' | 'high';
+
+type AdaptiveProfileConfig = {
+  id: AdaptiveProfileId;
+  maxCenterMidi: number;
+  /** Proportion of the previous stable frame retained while smoothing. */
+  smoothingMix: number;
+  /** Offset applied to the detector probability gate. */
+  gateOffset: number;
+};
+
+type AdaptiveRuntimeProfile = AdaptiveProfileConfig & {
+  gate: number;
+  centerMidi: number;
+  spread: number;
+};
+
+type StableFrame = { midi: number; confidence: number; timestamp: number };
+
+const ADAPTIVE_PROFILES: AdaptiveProfileConfig[] = [
+  {
+    id: 'low',
+    maxCenterMidi: 52,
+    smoothingMix: 0.48,
+    gateOffset: -0.025,
+  },
+  {
+    id: 'mid',
+    maxCenterMidi: 64,
+    smoothingMix: 0.32,
+    gateOffset: 0,
+  },
+  {
+    id: 'high',
+    maxCenterMidi: Number.POSITIVE_INFINITY,
+    smoothingMix: 0.18,
+    gateOffset: 0.02,
+  },
+];
+
+const clampGate = (threshold: number | undefined): number => {
+  if (!Number.isFinite(threshold)) {
+    return ADAPTIVE_GATE_MIN;
+  }
+
+  return Math.min(ADAPTIVE_GATE_MAX, Math.max(ADAPTIVE_GATE_MIN, Number(threshold)));
+};
+
+const smoothValue = (previous: number, next: number, mix: number): number => {
+  const weight = Math.min(0.95, Math.max(0, mix));
+  return previous * weight + next * (1 - weight);
+};
 
 export function usePitchDetection(): PitchDetectionStatus {
   const { state, actions } = useTuner();
@@ -109,14 +167,27 @@ export function usePitchDetection(): PitchDetectionStatus {
   const runningRef = React.useRef(false);
   const permissionAlertRef = React.useRef(false);
   const restartTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const adaptiveHistoryRef = React.useRef<StableFrame[]>([]);
+  const adaptiveProfileRef = React.useRef<AdaptiveRuntimeProfile>({
+    ...ADAPTIVE_PROFILES[1],
+    gate: clampGate(detectorOptions.threshold),
+    centerMidi: state.pitch.midi ?? 69,
+    spread: 0,
+  });
 
   React.useEffect(() => {
     manualModeRef.current = state.settings.manualMode;
   }, [state.settings.manualMode]);
 
   React.useEffect(() => {
-    confidenceGateRef.current = detectorOptions.threshold;
-  }, [detectorOptions.threshold]);
+    const clampedGate = clampGate(detectorOptions.threshold);
+    confidenceGateRef.current = clampedGate;
+    adaptiveProfileRef.current = { ...adaptiveProfileRef.current, gate: clampedGate };
+
+    if (availability) {
+      PitchDetector.setThreshold(clampedGate);
+    }
+  }, [availability, detectorOptions.threshold]);
 
   React.useEffect(() => {
     stablePitchRef.current = {
@@ -143,6 +214,101 @@ export function usePitchDetection(): PitchDetectionStatus {
     }
     fadeStartRef.current = null;
   }, []);
+
+  const updateAdaptiveProfile = React.useCallback(
+    (midi: number, confidence: number, timestamp: number) => {
+      if (!Number.isFinite(midi) || confidence < ADAPTIVE_STABLE_CONFIDENCE) {
+        return;
+      }
+
+      const history = adaptiveHistoryRef.current;
+      history.push({ midi, confidence, timestamp });
+      const windowStart = timestamp - ADAPTIVE_WINDOW_MS;
+      while (history.length > 0 && history[0].timestamp < windowStart) {
+        history.shift();
+      }
+
+      if (history.length < ADAPTIVE_MIN_FRAMES) {
+        return;
+      }
+
+      const sortedMidis = [...history]
+        .sort((a, b) => a.midi - b.midi)
+        .map((frame) => frame.midi);
+      const centerMidi = sortedMidis[Math.floor(sortedMidis.length / 2)];
+      const minMidi = sortedMidis[0];
+      const maxMidi = sortedMidis[sortedMidis.length - 1];
+      const spread = maxMidi - minMidi;
+
+      const resolvedProfile =
+        ADAPTIVE_PROFILES.find((profile) => centerMidi <= profile.maxCenterMidi) ??
+        ADAPTIVE_PROFILES[ADAPTIVE_PROFILES.length - 1];
+
+      const baseGate = clampGate(detectorOptions.threshold);
+      const nextGate = clampGate(baseGate + resolvedProfile.gateOffset);
+
+      const previous = adaptiveProfileRef.current;
+      const smoothingChanged =
+        Math.abs(previous.smoothingMix - resolvedProfile.smoothingMix) > 0.001;
+      const gateChanged = Math.abs(previous.gate - nextGate) > 0.001;
+      const centerChanged =
+        Math.abs(previous.centerMidi - centerMidi) > 0.49 || previous.spread !== spread;
+
+      if (!smoothingChanged && !gateChanged && !centerChanged) {
+        return;
+      }
+
+      adaptiveProfileRef.current = {
+        ...resolvedProfile,
+        gate: nextGate,
+        centerMidi,
+        spread,
+      };
+      confidenceGateRef.current = nextGate;
+
+      if (availability) {
+        PitchDetector.setThreshold(nextGate);
+      }
+
+      logger.info('adaptive_profile', 'Updated detector auto-range', {
+        profile: resolvedProfile.id,
+        centerMidi: Number(centerMidi.toFixed(2)),
+        spread: Number(spread.toFixed(2)),
+        gate: nextGate,
+      });
+    },
+    [availability, detectorOptions.threshold],
+  );
+
+  const applyAdaptiveSmoothing = React.useCallback(
+    (payload: {
+      midi: number | null;
+      cents: number;
+      confidence: number;
+    }): { midi: number | null; cents: number; confidence: number } => {
+      const baseline = stablePitchRef.current;
+      const profile = adaptiveProfileRef.current;
+
+      if (payload.midi === null || baseline.midi === null) {
+        return payload;
+      }
+
+      const sameRounded = Math.round(payload.midi) === Math.round(baseline.midi);
+      if (!sameRounded) {
+        return payload;
+      }
+
+      const mix = profile.smoothingMix;
+      const midi = smoothValue(baseline.midi, payload.midi, mix);
+      const cents = smoothValue(baseline.cents, payload.cents, mix);
+      const confidence = clampConfidence(
+        smoothValue(baseline.confidence ?? 0, payload.confidence ?? 0, mix),
+      );
+
+      return { midi, cents, confidence };
+    },
+    [],
+  );
 
   const commitPitch = React.useCallback(
     (payload: Partial<{
@@ -482,15 +648,22 @@ export function usePitchDetection(): PitchDetectionStatus {
       const noteName: NoteName = (event.noteName as NoteName | undefined) ??
         midiToNoteName(roundedMidi);
 
+      const smoothed = applyAdaptiveSmoothing({
+        midi: resolvedMidi,
+        cents: event.cents,
+        confidence,
+      });
+
       if (stableMidi === null || stableMidi === roundedMidi) {
         candidateRef.current = null;
         commitPitch({
-          midi: resolvedMidi,
-          cents: event.cents,
+          midi: smoothed.midi,
+          cents: smoothed.cents,
           noteName,
-          confidence,
+          confidence: smoothed.confidence,
           updatedAt: timestamp,
         });
+        updateAdaptiveProfile(resolvedMidi, confidence, timestamp);
         return;
       }
 
@@ -503,13 +676,19 @@ export function usePitchDetection(): PitchDetectionStatus {
         };
 
         if (timestamp - existingCandidate.startedAt >= NOTE_CHANGE_HYSTERESIS_MS) {
-          commitPitch({
+          const commitPayload = applyAdaptiveSmoothing({
             midi: resolvedMidi,
             cents: event.cents,
-            noteName,
             confidence,
+          });
+          commitPitch({
+            midi: commitPayload.midi,
+            cents: commitPayload.cents,
+            noteName,
+            confidence: commitPayload.confidence,
             updatedAt: timestamp,
           });
+          updateAdaptiveProfile(resolvedMidi, confidence, timestamp);
           candidateRef.current = null;
         }
         return;
@@ -536,6 +715,7 @@ export function usePitchDetection(): PitchDetectionStatus {
     };
   }, [
     availability,
+    applyAdaptiveSmoothing,
     clearFade,
     commitPitch,
     detectorOptions.threshold,
@@ -543,6 +723,7 @@ export function usePitchDetection(): PitchDetectionStatus {
     startDetector,
     startHoldFade,
     stopDetector,
+    updateAdaptiveProfile,
   ]);
 
   React.useEffect(() => {

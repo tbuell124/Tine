@@ -24,6 +24,7 @@ export interface PitchDetectionStatus {
   available: boolean;
   pitch: PitchState;
   permission: PermissionState;
+  listening: boolean;
   requestPermission: () => Promise<boolean>;
   openSettings: () => Promise<void>;
 }
@@ -56,6 +57,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   const availability = isPitchDetectorModuleAvailable;
   const [permission, setPermission] = React.useState<PermissionState>('unknown');
   const [pitch, setPitch] = React.useState<PitchState>(DEFAULT_PITCH);
+  const [listening, setListening] = React.useState(false);
 
   const detectorRunningRef = React.useRef(false);
   const subscriptionRef = React.useRef<{ remove: () => void } | null>(null);
@@ -84,6 +86,7 @@ export function usePitchDetection(): PitchDetectionStatus {
       console.warn('Failed to stop pitch detector', error);
     } finally {
       detectorRunningRef.current = false;
+      setListening(false);
     }
   }, []);
 
@@ -115,9 +118,11 @@ export function usePitchDetection(): PitchDetectionStatus {
       await PitchDetector.start({ threshold: 0.15, bufferSize: 1024 });
       subscriptionRef.current = PitchDetector.addPitchListener(handlePitch);
       detectorRunningRef.current = true;
+      setListening(true);
     } catch (error) {
       console.warn('Failed to start pitch detector', error);
       detectorRunningRef.current = false;
+      setListening(false);
     }
   }, [availability, handlePitch, permission]);
 
@@ -230,8 +235,15 @@ export function usePitchDetection(): PitchDetectionStatus {
   );
 
   return React.useMemo(
-    () => ({ available: availability, pitch, permission, requestPermission, openSettings }),
-    [availability, openSettings, permission, pitch, requestPermission]
+    () => ({
+      available: availability,
+      pitch,
+      permission,
+      listening,
+      requestPermission,
+      openSettings,
+    }),
+    [availability, listening, openSettings, permission, pitch, requestPermission]
   );
 }
 

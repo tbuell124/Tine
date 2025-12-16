@@ -9,16 +9,17 @@ Tine is a React Native + Expo application that delivers the tactile feel of a st
 ## Table of contents
 
 1. [Project overview](#project-overview)
-2. [Prerequisites](#prerequisites)
-3. [Clone the repository](#clone-the-repository)
-4. [Install dependencies](#install-dependencies)
-5. [Run the app locally](#run-the-app-locally)
-6. [Project structure](#project-structure)
-7. [Quality checks](#quality-checks)
-8. [Deployment guides](#deployment-guides)
-9. [Troubleshooting](#troubleshooting)
-10. [Contributing](#contributing)
-11. [License](#license)
+2. [Quick start (minimal tuner)](#quick-start-minimal-tuner)
+3. [Prerequisites](#prerequisites)
+4. [Clone the repository](#clone-the-repository)
+5. [Install dependencies](#install-dependencies)
+6. [Run the app locally](#run-the-app-locally)
+7. [Project structure](#project-structure)
+8. [Quality checks](#quality-checks)
+9. [Deployment guides](#deployment-guides)
+10. [Troubleshooting](#troubleshooting)
+11. [Contributing](#contributing)
+12. [License](#license)
 
 ---
 
@@ -29,6 +30,22 @@ Tine is a React Native + Expo application that delivers the tactile feel of a st
 - **Skia-powered visuals** – [`@shopify/react-native-skia`](https://shopify.github.io/react-native-skia/) renders the wheels, metallic textures, and tilt-driven lighting in real time.
 - **Accessibility-first UI** – VoiceOver labels, high-contrast glyphs, and optional numeric readouts keep the tuner inclusive.
 - **Evolving DSP core** – Native audio bridges (Swift/Kotlin) feed TypeScript-based YIN + MPM pitch detection with adaptive smoothing.
+
+## Quick start (minimal tuner)
+
+The default app entry renders a simplified `TunerScreen` with a single horizontal meter and oversized note label so you can validate microphone permissions and detector wiring without the full dual-wheel treatment.【F:App.tsx†L5-L23】【F:src/components/TunerScreen.tsx†L14-L82】
+
+1. Install dependencies with npm or Yarn (see below) and run `npm run start`.
+2. Open the Expo dev client on iOS/Android or a simulator; the meter should begin tracking as soon as mic permission is granted.
+3. Optional features you can layer on:
+   - Sensitivity presets that trade buffer size vs. stability (`low-latency`, `balanced`, `stable`) are defined in `TunerStateContext` if you want a different default profile.【F:src/state/TunerStateContext.tsx†L12-L40】【F:src/state/TunerStateContext.tsx†L264-L277】
+   - Notification overlays already ship with the screen to surface permission or detector issues; keep them mounted if you need inline prompts.【F:App.tsx†L10-L23】【F:src/components/MicPermissionScreen.tsx†L1-L112】
+   - The dual-wheel Skia visuals described above remain available for future builds once the DSP stack is re-enabled.
+
+### Adjust calibration and detection thresholds
+
+- **Reference pitch (A4):** The YIN detector maps frequency to MIDI using a 440 Hz anchor. To change the concert pitch (e.g., to 442 Hz), update the divisor in `midiFromFrequency` within both the TypeScript and C++ YIN references, then rebuild the native clients.【F:src/native/dsp/YinPitchDetector.ts†L216-L233】【F:src/native/dsp/YinPitchDetector.cpp†L156-L170】
+- **Detector probability threshold:** Each sensitivity preset sets the pitch detector’s probability gate that is forwarded to `PitchDetector.setThreshold`. Raise it for stricter locking or lower it for quicker responsiveness by editing `probabilityThreshold` in `SENSITIVITY_PRESETS`; values are clamped between 0.05–0.35 before being applied.【F:src/state/TunerStateContext.tsx†L12-L40】【F:src/state/TunerStateContext.tsx†L264-L279】
 
 ## Prerequisites
 

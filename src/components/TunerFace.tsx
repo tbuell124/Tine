@@ -10,7 +10,6 @@ import {
   MAX_DISPLAY_DEG,
   NOTE_STEP_DEG,
   midiToEnharmonicNames,
-  midiToNoteName,
   MIDI_MAX,
   MIDI_MIN,
 } from "@utils/music";
@@ -366,7 +365,7 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     dwellTimeMs: settings.lockDwellTime * 1000,
   });
 
-  const noteDisplay = React.useMemo(() => {
+  const noteGlyph = React.useMemo(() => {
     const formatStem = (note: string): string => {
       const match = note.match(/^([A-G])([#b]?)/i);
       if (!match) {
@@ -379,29 +378,14 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
     };
 
     if (pitch.midi === null) {
-      return { primary: "—", alternate: null };
+      return "—";
     }
 
     const enharmonic = midiToEnharmonicNames(pitch.midi);
     const preferred = pitch.noteName ?? enharmonic.sharp;
-    const primary = formatStem(preferred);
-    const alternateCandidate = formatStem(enharmonic.flat);
-    const alternate = alternateCandidate !== primary ? alternateCandidate : null;
 
-    return { primary, alternate };
+    return formatStem(preferred);
   }, [pitch.midi, pitch.noteName]);
-
-  const manualNoteLabel = React.useMemo(() => {
-    if (pitch.noteName) {
-      return pitch.noteName;
-    }
-
-    if (pitch.midi !== null) {
-      return midiToNoteName(pitch.midi);
-    }
-
-    return midiToNoteName(DEFAULT_A4_MIDI);
-  }, [pitch.noteName, pitch.midi]);
 
   const innerSize = size * INNER_WHEEL_RATIO;
 
@@ -434,20 +418,12 @@ export const TunerFace: React.FC<TunerFaceProps> = ({
       </View>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <View style={styles.centerOverlay}>
-          {settings.manualMode ? (
-            <Text style={styles.manualLabel} accessibilityRole="text">{`Manual ${manualNoteLabel}`}</Text>
-          ) : null}
           <Text
             style={[styles.noteGlyph, locked ? { color: indicatorAccent } : null]}
             accessibilityRole="text"
           >
-            {noteDisplay.primary}
+            {noteGlyph}
           </Text>
-          {noteDisplay.alternate ? (
-            <Text style={styles.alternateLabel} accessibilityRole="text">
-              {noteDisplay.alternate}
-            </Text>
-          ) : null}
         </View>
       </View>
     </View>
@@ -469,31 +445,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 16,
   },
-  manualLabel: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.45)",
-    color: "#dbeafe",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.4,
-  },
   noteGlyph: {
     color: "#f8fafc",
     fontSize: 88,
     fontWeight: "800",
     letterSpacing: 4,
-  },
-  alternateLabel: {
-    marginTop: 8,
-    color: "#94a3b8",
-    fontSize: 18,
-    letterSpacing: 2,
-    fontWeight: "600",
   },
 });
 

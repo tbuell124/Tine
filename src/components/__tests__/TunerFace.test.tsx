@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { render, act, waitFor } from '@testing-library/react-native';
 
 jest.mock('@shopify/react-native-skia');
@@ -21,7 +22,7 @@ jest.mock('@hooks/usePitchLock', () => ({
 jest.mock('react-native-gesture-handler');
 
 import { __TEST__ as gestureTest } from 'react-native-gesture-handler';
-import { TunerProvider } from '@state/TunerStateContext';
+import { TunerProvider, useTuner } from '@state/TunerStateContext';
 import { TunerFace } from '../TunerFace';
 
 describe('TunerFace interactions', () => {
@@ -30,13 +31,19 @@ describe('TunerFace interactions', () => {
   });
 
   it('enables manual mode when the outer wheel pan begins', async () => {
+    const ManualProbe = () => {
+      const { state } = useTuner();
+      return <Text testID="manual-mode">{state.settings.manualMode ? 'manual' : 'auto'}</Text>;
+    };
+
     const screen = render(
       <TunerProvider>
         <TunerFace />
+        <ManualProbe />
       </TunerProvider>,
     );
 
-    expect(screen.queryByText(/Manual/)).toBeNull();
+    expect(screen.getByTestId('manual-mode').children.join('')).toBe('auto');
 
     const [outerGesture] = gestureTest.gestures;
     expect(outerGesture).toBeDefined();
@@ -46,7 +53,7 @@ describe('TunerFace interactions', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Manual/)).toBeTruthy();
+      expect(screen.getByTestId('manual-mode').children.join('')).toBe('manual');
     });
   });
 });

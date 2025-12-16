@@ -13,13 +13,14 @@ const clamp = (value: number, min: number, max: number): number =>
 
 export const TunerScreen: React.FC = () => {
   const { permission, requestPermission, openSettings } = usePitchDetection();
-  const showPermissionScreen = permission === 'denied';
+  const showPermissionScreen = permission !== 'granted';
   const { state } = useTuner();
   const { width } = useWindowDimensions();
 
   if (showPermissionScreen) {
     return (
       <MicPermissionScreen
+        permission={permission}
         onOpenSettings={openSettings}
         onRequestPermission={() => {
           void requestPermission();

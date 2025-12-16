@@ -1,7 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { PermissionState } from '@hooks/usePitchDetection';
+
 export interface MicPermissionScreenProps {
+  /** Current microphone permission status used to tailor the call-to-action copy. */
+  permission: PermissionState;
   /** Opens the system settings screen so the user can re-enable microphone access. */
   onOpenSettings: () => void;
   /** Optional retry hook to re-trigger the permission flow without leaving the app. */
@@ -9,28 +13,44 @@ export interface MicPermissionScreenProps {
 }
 
 export const MicPermissionScreen: React.FC<MicPermissionScreenProps> = ({
+  permission,
   onOpenSettings,
   onRequestPermission,
 }) => {
+  const isDenied = permission === 'denied';
+  const primaryAction = isDenied ? onOpenSettings : onRequestPermission ?? onOpenSettings;
+  const primaryLabel = isDenied ? 'Open Settings' : 'Allow Microphone Access';
+
+  const explainerText = isDenied
+    ? 'Microphone access is currently blocked. Enable it again to keep tuning in real time.'
+    : 'Tine listens to your instrument to keep you in tune. We only use the mic for live pitch detection while you are tuning.';
+
   return (
     <View style={styles.container}>
       <View style={styles.headerBadge}>
         <Text style={styles.headerIcon}>🎤</Text>
       </View>
       <Text style={styles.title}>Microphone access needed</Text>
-      <Text style={styles.message}>
-        Tine pauses tuning when microphone access is disabled. Re-enable the mic to resume live
-        pitch detection.
-      </Text>
+      <Text style={styles.message}>{explainerText}</Text>
       <Pressable
-        onPress={onOpenSettings}
+        onPress={primaryAction}
         style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
         accessibilityRole="button"
-        accessibilityLabel="Open system settings to enable microphone access"
+        accessibilityLabel={
+          isDenied
+            ? 'Open system settings to enable microphone access'
+            : 'Request microphone access to enable pitch detection'
+        }
       >
-        <Text style={styles.primaryLabel}>Open Settings</Text>
+        <Text style={styles.primaryLabel}>{primaryLabel}</Text>
       </Pressable>
-      {onRequestPermission ? (
+      {isDenied ? (
+        <Text style={styles.caption}>
+          If you previously denied permission, open your device settings to re-enable the
+          microphone so Tine can hear your instrument.
+        </Text>
+      ) : null}
+      {!isDenied && onRequestPermission ? (
         <Pressable
           onPress={onRequestPermission}
           accessibilityRole="button"
@@ -100,6 +120,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
+  },
+  caption: {
+    color: '#94a3b8',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
   },
   secondaryLabel: {
     color: '#a5b4fc',

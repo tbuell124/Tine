@@ -4,6 +4,21 @@ This document is a comprehensive, end-to-end playbook for shipping the iOS versi
 
 ---
 
+## 0. Quickstart (first successful build)
+
+1. Install Xcode 15, Node 20 or 22, and CocoaPods 1.15+ (see [prerequisites](#1-prerequisites-checklist)).
+2. Clone the repo and install dependencies (`npm install` and `npx pod-install ios`).
+3. Sign in to Expo (`npx expo login`).
+4. Populate `app.json` with the correct bundle identifier, version, and build number.
+5. Run automated checks: `npm run lint`, `npm run test`, and `npm run format:check`.
+6. Trigger an internal TestFlight build with EAS: `eas build --platform ios --profile preview`.
+7. Submit the finished build to App Store Connect: `eas submit --platform ios --latest`.
+8. After processing, invite testers in TestFlight and verify on a physical device.
+
+Return to the detailed sections below for deeper explanations or troubleshooting.
+
+---
+
 ## 1. Prerequisites checklist
 
 | Requirement | Details | Verification |

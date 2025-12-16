@@ -5,8 +5,6 @@ import { Platform, AppState } from 'react-native';
 import type { PitchEvent } from '@native/modules/specs/PitchDetectorNativeModule';
 
 import TunerScreen from '@components/TunerScreen';
-import { NotificationProvider } from '@state/NotificationContext';
-import { TunerProvider } from '@state/TunerStateContext';
 
 type PermissionState = {
   status: 'granted' | 'denied';
@@ -70,16 +68,8 @@ jest.mock('@native/modules/PitchDetector', () => ({
       },
     };
   }),
+  removeAllListeners: jest.fn(),
 }));
-
-const renderWithProviders = () =>
-  render(
-    <NotificationProvider>
-      <TunerProvider>
-        <TunerScreen />
-      </TunerProvider>
-    </NotificationProvider>,
-  );
 
 describe('usePitchDetection integration', () => {
   beforeEach(() => {
@@ -100,7 +90,7 @@ describe('usePitchDetection integration', () => {
     const { __setPermissionState } = jest.requireMock('expo-av');
     __setPermissionState({ status: 'denied', granted: false, canAskAgain: false });
 
-    const { findByText } = renderWithProviders();
+    const { findByText } = render(<TunerScreen />);
 
     expect(await findByText('Microphone access needed')).toBeOnTheScreen();
     expect(await findByText('Open Settings')).toBeOnTheScreen();
@@ -110,7 +100,7 @@ describe('usePitchDetection integration', () => {
     const detector = jest.requireMock('@native/modules/PitchDetector');
     const { __getPermissionsMock } = jest.requireMock('expo-av');
 
-    const { queryByText } = renderWithProviders();
+    const { queryByText } = render(<TunerScreen />);
 
     await waitFor(() => expect(detector.start).toHaveBeenCalled());
     expect(queryByText('Microphone access needed')).toBeNull();
@@ -118,7 +108,7 @@ describe('usePitchDetection integration', () => {
   });
 
   it('updates the tuner display in response to pitch events', async () => {
-    renderWithProviders();
+    render(<TunerScreen />);
 
     await waitFor(() => expect(pitchListeners.length).toBeGreaterThan(0));
 

@@ -4,7 +4,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 
 import { usePitchDetection } from '@hooks/usePitchDetection';
 import { MicPermissionScreen } from '@components/MicPermissionScreen';
-import { useTuner } from '@state/TunerStateContext';
 import { midiToNoteName } from '@utils/music';
 
 const MAX_DEVIATION = 50;
@@ -12,9 +11,8 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 export const TunerScreen: React.FC = () => {
-  const { permission, requestPermission, openSettings } = usePitchDetection();
+  const { permission, requestPermission, openSettings, pitch } = usePitchDetection();
   const showPermissionScreen = permission === 'denied';
-  const { state } = useTuner();
   const { width } = useWindowDimensions();
 
   if (showPermissionScreen) {
@@ -28,8 +26,8 @@ export const TunerScreen: React.FC = () => {
     );
   }
 
-  const deviation = clamp(state.pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
-  const isInTune = state.pitch.midi !== null && Math.abs(state.pitch.cents) <= 3;
+  const deviation = clamp(pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
+  const isInTune = pitch.midi !== null && Math.abs(pitch.cents) <= 3;
   const indicatorColor = isInTune ? '#22c55e' : '#ef4444';
 
   const noteLabel = React.useMemo(() => {
@@ -44,16 +42,16 @@ export const TunerScreen: React.FC = () => {
       return `${letter.toUpperCase()}${accidentalSymbol}`;
     };
 
-    if (state.pitch.noteName) {
-      return formatStem(state.pitch.noteName);
+    if (pitch.noteName) {
+      return formatStem(pitch.noteName);
     }
 
-    if (state.pitch.midi !== null) {
-      return formatStem(midiToNoteName(Math.round(state.pitch.midi)));
+    if (pitch.midi !== null) {
+      return formatStem(midiToNoteName(Math.round(pitch.midi)));
     }
 
     return '—';
-  }, [state.pitch.midi, state.pitch.noteName]);
+  }, [pitch.midi, pitch.noteName]);
 
   const meterWidth = React.useMemo(() => Math.min(Math.max(width - 40, 220), 380), [width]);
   const indicatorTravel = (meterWidth - 32) / 2;

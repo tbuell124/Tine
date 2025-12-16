@@ -2,7 +2,7 @@
 
 ## Repo Map (at a glance)
 - `/App.tsx` — App entry, providers.
-- `/src/components/` — Skia/gesture UI (e.g., `TunerScreen`, `TunerFace`, settings modal).
+- `/src/components/` — Skia/gesture UI (e.g., `TunerScreen`, `TunerFace`).
 - `/src/state/` — Reducer/context for tuner state, settings persistence, notifications.
 - `/src/hooks/` — Lifecycles for pitch detection and native module wiring.
 - `/src/native/` — TurboModule contract plus DSP reference implementation.
@@ -12,11 +12,11 @@
 - React Native + Expo tuner with dual-wheel + meter UI for iOS, Android, and web preview; focused on real-time pitch feedback.【See [README](../README.md) and [app.json](../app.json)】
 - Presents a meter-style tuner screen that reads live pitch data and highlights in-tune states with color feedback.【See [`src/components/TunerScreen.tsx`](../src/components/TunerScreen.tsx)】
 - Wraps the primary screen with providers for tuner state and toast-like notifications; main surface plus modal overlays rather than multi-route navigation.【See [`App.tsx`](../App.tsx)】
-- Stores user settings (e.g., sensitivity, A4 calibration) across sessions via AsyncStorage and hydrates them on launch.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
+- Stores tuner preferences (e.g., sensitivity and lock behaviour) across sessions via AsyncStorage and hydrates them on launch; concert pitch is fixed to 440 Hz with no calibration control.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
 - Integrates a native YIN-based pitch detector TurboModule with configurable buffer sizes and thresholds driven by app settings.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts) and [`src/native/modules/specs/PitchDetectorNativeModule.ts`](../src/native/modules/specs/PitchDetectorNativeModule.ts)】
 
 ## Scope (Who/Context)
-- Intended users: musicians needing precise instrument tuning; evidenced by note/cents readouts and calibration controls.【See [`src/components/TunerScreen.tsx`](../src/components/TunerScreen.tsx) and [`src/components/SettingsModal.tsx`](../src/components/SettingsModal.tsx)】
+- Intended users: musicians needing precise instrument tuning; evidenced by note/cents readouts and a concert-pitch-fixed workflow (A4=440) with no in-app calibration.【See [`src/components/TunerScreen.tsx`](../src/components/TunerScreen.tsx)】
 - Platform reach: iOS and Android with web preview; requires microphone permission and optional background audio handling per Expo config.【See [`app.json`](../app.json)】
 - Constraints: Needs microphone access; no account system or remote API calls are present. Local-only data is persisted via AsyncStorage; no deliberate offline UX beyond that is implemented.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts) and [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
 - Unclear items: No explicit target instrument list or latency guarantees in code; native bridge implementations for Android/iOS not shown here, so runtime performance characteristics are unproven.
@@ -29,13 +29,6 @@
 - Network: None; audio processed locally via native module.【See [`src/native/modules/specs/PitchDetectorNativeModule.ts`](../src/native/modules/specs/PitchDetectorNativeModule.ts)】
 - Errors: Permission denied triggers notifications with actions; detector start failures show retry prompts.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
 
-### Flow: Adjust tuning sensitivity / calibration
-- Start: Tap Settings button to open modal.【See [`src/components/SettingsModal.tsx`](../src/components/SettingsModal.tsx)】
-- Steps: Modal exposes sliders for A4 calibration, lock threshold/dwell, and sensitivity presets; saving dispatches `UPDATE_SETTINGS` to context and closes modal.【See [`src/components/SettingsModal.tsx`](../src/components/SettingsModal.tsx)】
-- Data: Updates persisted `TunerSettings`; sensitivity informs detector options (buffer size/threshold) used on next detector start.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) and [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
-- Network: None.
-- Errors: Persistence failures raise notifications; invalid inputs clamped in reducer helpers.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
-
 ### Flow: Handle microphone permission
 - Start: On first run or when permission unknown/denied, hook requests access (platform-specific).【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
 - Steps: iOS uses `expo-av` permissions; Android uses `PermissionsAndroid`; failures prompt notifications to open settings or retry.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
@@ -44,7 +37,7 @@
 - Errors: Permission denial triggers actionable notifications and prevents detector start; exceptions logged.【See [`src/hooks/usePitchDetection.ts`](../src/hooks/usePitchDetection.ts)】
 
 ### Flow: Manual tuning mode (coarse note selection)
-- Start: Switching to manual mode (via settings toggle) stops detector-driven updates; wheel rotation gestures set target MIDI/note manually.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) and [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
+- Start: Engaging the wheel gesture sets manual mode, pausing detector-driven updates; outer rotation sets target MIDI/note manually.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) and [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
 - Steps: Manual gestures adjust outer angle and derived MIDI; cents reset to 0 until manual state ends.【See [`src/components/TunerFace.tsx`](../src/components/TunerFace.tsx)】
 - Data: Tuner state (pitch/angles) updated from gesture handlers rather than detector.【See [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx)】
 - Network: None.
@@ -59,17 +52,16 @@
 
 ## Parts (UI / Components)
 ### Screens / Routes
-- **TunerScreen** (`src/components/TunerScreen.tsx`): Primary interface showing meter, note label, and color-coded in-tune feedback; initializes pitch detection hook. Modal overlays handle settings and notifications.
+- **TunerScreen** (`src/components/TunerScreen.tsx`): Primary interface showing meter, note label, and color-coded in-tune feedback; initializes pitch detection hook and surfaces notifications.
 
 ### Key Components
 - **TunerFace**, **InnerWheel**, **OuterWheel**, **IndexIndicator**: Skia/gesture-driven dual-wheel UI for visualizing pitch class and cents; manual mode gestures and detents handled here.
-- **SettingsModal**: Modal with sliders/buttons to edit A4 calibration, sensitivity presets, and lock heuristics; persists through context actions.
 - **NotificationSurface** (provider-backed): Displays queued notifications from `NotificationContext` actions (hook implementations not shown in this snippet).
 - **NotificationProvider / TunerProvider**: Context providers for notifications and tuner state wrapping the app root.
 
 ### Design / UX Notes (from code)
 - Dark theme background (`#020617`) with high-contrast indicator colors for in-tune vs out-of-tune states.
-- Accessibility affordances include `accessibilityRole` labels on settings launcher and modal overlay controls.
+- Accessibility affordances include `accessibilityRole` labels on buttons and overlays where present.
 - Gesture support via `react-native-gesture-handler` and animations via Reanimated for smooth indicator movement.
 
 ## Technical Overview
@@ -82,7 +74,7 @@
 ### Architecture
 - Single primary screen with modal overlays; providers in `App.tsx` wrap the UI. Tuner logic is centralized in `TunerStateContext` reducer/actions and consumed via hooks (`useTuner`).
 - Pitch detection hook manages lifecycle: permissions, start/stop of native module, and dispatching pitch/angle updates to context, decoupling UI from native layer.
-- Settings persist/hydrate via AsyncStorage; detector options derived from settings to control native buffer size/thresholds.
+- Settings persist/hydrate via AsyncStorage; detector options derived from sensitivity presets to control native buffer size/thresholds. A4 calibration is fixed at 440 Hz with no UI toggle.
 - Notification system uses context to queue/dismiss toasts with optional actions, enabling non-blocking UX for errors/permissions.
 
 #### Architecture diagram (text)
@@ -93,8 +85,7 @@ App.tsx
       └─ TunerProvider (state reducer + persistence)
           └─ TunerScreen (Skia UI)
               ├─ usePitchDetection (permissions + native module lifecycle)
-              ├─ TunerFace (gesture wheels + indicators)
-              └─ SettingsModal (A4/sensitivity/lock controls)
+              └─ TunerFace (gesture wheels + indicators)
 ```
 
 ### State Model (shapes defined in code)
@@ -102,7 +93,7 @@ App.tsx
 | --- | --- | --- | --- |
 | PitchState | midi, cents, noteName, confidence, updatedAt | Native pitch detector events -> context | [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) |
 | AngleState | outer, inner dial degrees | Derived from pitch or gestures | [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) |
-| TunerSettings | a4Calibration, sensitivityRange/profile, lockThreshold, lockDwellTime, manualMode | AsyncStorage persistence; edited in settings UI | [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) |
+| TunerSettings | sensitivityRange/profile, lockThreshold, lockDwellTime, manualMode | AsyncStorage persistence; A4 fixed at 440 Hz with no exposed UI | [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) |
 | SignalState | phase, lastChange, freezeUntil, lastHeardAt | Derived from pitch activity/dropouts | [`src/state/TunerStateContext.tsx`](../src/state/TunerStateContext.tsx) |
 | PitchEvent | isValid, frequency, midi, cents, probability, noteName, timestamp | Native TurboModule event payload | [`src/native/modules/specs/PitchDetectorNativeModule.ts`](../src/native/modules/specs/PitchDetectorNativeModule.ts) |
 

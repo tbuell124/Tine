@@ -19,7 +19,8 @@ module.exports = function (api) {
           },
         },
       ],
-      'react-native-reanimated/plugin',
+      '@babel/plugin-proposal-export-namespace-from',
+      'react-native-worklets/plugin', // must be last
     ],
   };
 };

@@ -78,6 +78,16 @@ export class WebPitchDetector {
     });
 
     this.audioContext = new AudioContextCtor();
+
+    if (this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+      } catch (error) {
+        await this.stop();
+        throw error;
+      }
+    }
+
     const source = this.audioContext.createMediaStreamSource(this.stream);
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = bufferSize;

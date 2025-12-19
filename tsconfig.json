@@ -10,30 +10,13 @@
     "skipLibCheck": true,
     "types": ["jest", "@testing-library/jest-native"],
     "paths": {
-      "@components/*": [
-        "src/components/*"
-      ],
-      "@hooks/*": [
-        "src/hooks/*"
-      ],
-      "@native/*": [
-        "src/native/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ],
-      "@state/*": [
-        "src/state/*"
-      ]
+      "@components/*": ["src/components/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@native/*": ["src/native/*"],
+      "@utils/*": ["src/utils/*"],
+      "@state/*": ["src/state/*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js"
-  ]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js"]
 }

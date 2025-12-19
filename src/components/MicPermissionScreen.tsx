@@ -27,7 +27,7 @@ export const MicPermissionScreen: React.FC<MicPermissionScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.headerBadge}>
-        <Text style={styles.headerIcon}>🎤</Text>
+        <Text style={styles.headerIcon}>MIC</Text>
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -51,7 +51,9 @@ export const MicPermissionScreen: React.FC<MicPermissionScreenProps> = ({
           }
           accessibilityRole="button"
           accessibilityLabel={
-            isDenied ? 'Retry microphone permission request' : 'Enable microphone access for live tuning'
+            isDenied
+              ? 'Retry microphone permission request'
+              : 'Enable microphone access for live tuning'
           }
         >
           <Text style={isDenied ? styles.secondaryLabel : styles.primaryLabel}>
@@ -81,25 +83,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#22c55e',
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
   },
   headerIcon: {
     fontSize: 32,
+    fontFamily: 'Lato',
   },
   title: {
     color: '#e2e8f0',
     fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
+    fontFamily: 'Lato',
   },
   message: {
     color: '#94a3b8',
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
+    fontFamily: 'Lato',
   },
   primaryButton: {
     width: '100%',
@@ -107,10 +108,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#22c55e',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
   },
   primaryButtonPressed: {
     opacity: 0.85,
@@ -127,12 +124,14 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: 'Lato',
   },
   secondaryLabel: {
     color: '#a5b4fc',
     fontSize: 14,
     fontWeight: '600',
     marginTop: 6,
+    fontFamily: 'Lato',
   },
 });
 

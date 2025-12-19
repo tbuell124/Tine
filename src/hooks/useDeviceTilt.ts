@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Platform } from "react-native";
-import { Accelerometer, type AccelerometerMeasurement, type Subscription } from "expo-sensors";
+import { Accelerometer, type AccelerometerMeasurement, type Subscription } from 'expo-sensors';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 const DEFAULT_VECTOR = { x: 0, y: 0, z: -1 };
 
@@ -55,7 +55,7 @@ const calculateState = (measurement: AccelerometerMeasurement): DeviceTiltState 
 };
 
 const startAccelerometer = async () => {
-  if (accelerometerSubscription || Platform.OS === "web") {
+  if (accelerometerSubscription || Platform.OS === 'web') {
     return;
   }
 
@@ -66,7 +66,7 @@ const startAccelerometer = async () => {
   if (isSensorAvailable === null) {
     try {
       isSensorAvailable = await Accelerometer.isAvailableAsync();
-    } catch (error) {
+    } catch {
       isSensorAvailable = false;
     }
   }
@@ -78,7 +78,9 @@ const startAccelerometer = async () => {
   Accelerometer.setUpdateInterval(100);
   accelerometerSubscription = Accelerometer.addListener((measurement) => {
     currentState = calculateState(measurement);
-    listeners.forEach((listener) => listener(currentState));
+    listeners.forEach((listener) => {
+      listener(currentState);
+    });
   });
 };
 
@@ -98,7 +100,7 @@ export const useDeviceTilt = (): DeviceTiltState => {
     listeners.add(listener);
 
     if (listeners.size === 1) {
-      void startAccelerometer();
+      startAccelerometer().catch(() => {});
     }
 
     return () => {

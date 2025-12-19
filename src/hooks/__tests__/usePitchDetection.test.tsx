@@ -1,10 +1,9 @@
-import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Platform, AppState } from 'react-native';
-
+/* eslint-disable import/order */
 import type { PitchEvent } from '@native/modules/specs/PitchDetectorNativeModule';
-
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import TunerScreen from '@components/TunerScreen';
+import React from 'react';
+import { AppState, Platform } from 'react-native';
 
 type PermissionState = {
   status: 'granted' | 'denied';
@@ -51,7 +50,7 @@ jest.mock('@native/modules/specs/PitchDetectorNativeModule', () => ({
   isPitchDetectorModuleAvailable: true,
 }));
 
-const pitchListeners: Array<(event: PitchEvent) => void> = [];
+const pitchListeners: ((event: PitchEvent) => void)[] = [];
 
 jest.mock('@native/modules/PitchDetector', () => ({
   start: jest.fn(() => Promise.resolve({ threshold: 0.12, bufferSize: 1024, sampleRate: 48000 })),
@@ -111,7 +110,9 @@ describe('usePitchDetection integration', () => {
       fireEvent.press(await findByText('Enable microphone access'));
     });
 
-    await waitFor(() => expect(__requestPermissionsMock).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(__requestPermissionsMock).toHaveBeenCalled();
+    });
   });
 
   it('starts the detector when permission is granted', async () => {
@@ -120,7 +121,9 @@ describe('usePitchDetection integration', () => {
 
     const { queryByText } = render(<TunerScreen />);
 
-    await waitFor(() => expect(detector.start).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(detector.start).toHaveBeenCalled();
+    });
     expect(queryByText('Microphone access needed')).toBeNull();
     expect(__getPermissionsMock).toHaveBeenCalled();
   });
@@ -128,7 +131,9 @@ describe('usePitchDetection integration', () => {
   it('updates the tuner display in response to pitch events', async () => {
     render(<TunerScreen />);
 
-    await waitFor(() => expect(pitchListeners.length).toBeGreaterThan(0));
+    await waitFor(() => {
+      expect(pitchListeners.length).toBeGreaterThan(0);
+    });
 
     const payload: PitchEvent = {
       isValid: true,
@@ -145,6 +150,8 @@ describe('usePitchDetection integration', () => {
       pitchListeners[0]({ ...payload, timestamp: 1300 });
     });
 
-    await waitFor(() => expect(screen.getByText('E')).toBeOnTheScreen());
+    await waitFor(() => {
+      expect(screen.getByText('E')).toBeOnTheScreen();
+    });
   });
 });

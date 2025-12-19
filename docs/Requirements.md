@@ -6,11 +6,11 @@ This document consolidates every tool and library you need to install before wor
 
 ## 1. Operating system support
 
-| Platform | Status | Notes |
-| --- | --- | --- |
-| macOS 13 Ventura or later (Apple Silicon or Intel) | ✅ Fully supported | Required for iOS builds and recommended for Android builds. |
-| Windows 11 (WSL2 recommended) | ⚠️ Supported with caveats | Use WSL2 Ubuntu for the best Expo CLI and Android emulator experience. iOS builds are not possible. |
-| Ubuntu 22.04 LTS (desktop or WSL2) | ✅ Fully supported | Install Android tooling manually. iOS builds are not possible. |
+| Platform                                           | Status                    | Notes                                                                                               |
+| -------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| macOS 13 Ventura or later (Apple Silicon or Intel) | ✅ Fully supported        | Required for iOS builds and recommended for Android builds.                                         |
+| Windows 11 (WSL2 recommended)                      | ⚠️ Supported with caveats | Use WSL2 Ubuntu for the best Expo CLI and Android emulator experience. iOS builds are not possible. |
+| Ubuntu 22.04 LTS (desktop or WSL2)                 | ✅ Fully supported        | Install Android tooling manually. iOS builds are not possible.                                      |
 
 > **Tip:** Keep your OS patched with the latest security updates. Mobile SDKs frequently require recent system libraries.
 
@@ -20,14 +20,14 @@ This document consolidates every tool and library you need to install before wor
 
 Install these tools in the listed order. Version numbers reflect the minimum recommended release verified with Expo SDK 54 and React Native 0.82.
 
-| Tool | Version | Install command / link | Verification |
-| --- | --- | --- | --- |
-| Git | 2.39+ | [git-scm.com/downloads](https://git-scm.com/downloads) | `git --version` |
-| Node.js | 20 LTS or 22 LTS | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) then run `nvm install 22 && nvm use 22` (or `nvm install 20 && nvm use 20`). | `node --version` should output `v20.x` or `v22.x`. |
-| npm | Bundled with Node | Installed automatically with Node. | `npm --version` (expect 10.x with Node 20/22). |
-| Yarn (optional) | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable` then run `corepack prepare yarn@stable --activate`. | `yarn --version` |
-| Expo CLI | Bundled per-project | Use `npx expo <command>` instead of global installs. | `npx expo --version` |
-| Watchman (macOS only, optional on Linux) | Latest | `brew install watchman` or build from source. | `watchman --version` |
+| Tool                                     | Version                     | Install command / link                                                                                                                        | Verification                                       |
+| ---------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Git                                      | 2.39+                       | [git-scm.com/downloads](https://git-scm.com/downloads)                                                                                        | `git --version`                                    |
+| Node.js                                  | 20 LTS or 22 LTS            | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) then run `nvm install 22 && nvm use 22` (or `nvm install 20 && nvm use 20`). | `node --version` should output `v20.x` or `v22.x`. |
+| npm                                      | Bundled with Node           | Installed automatically with Node.                                                                                                            | `npm --version` (expect 10.x with Node 20/22).     |
+| Yarn (optional)                          | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable` then run `corepack prepare yarn@stable --activate`.                                                    | `yarn --version`                                   |
+| Expo CLI                                 | Bundled per-project         | Use `npx expo <command>` instead of global installs.                                                                                          | `npx expo --version`                               |
+| Watchman (macOS only, optional on Linux) | Latest                      | `brew install watchman` or build from source.                                                                                                 | `watchman --version`                               |
 
 When switching Node versions with `nvm`, restart the terminal or run `hash -r` so your shell finds the new binaries.
 
@@ -54,13 +54,13 @@ npx pod-install ios
 
 ## 4. Android build requirements
 
-| Component | Version | Installation notes |
-| --- | --- | --- |
-| Android Studio | Iguana (2023.2.1) or newer | Install from [developer.android.com/studio](https://developer.android.com/studio). |
-| Android SDK Platform | API 35 (Android 15) | Install via the SDK Manager in Android Studio. Include Android 13/14 if you support older devices. |
-| Android SDK Build-Tools | 35.0.0 | Install via SDK Manager. |
-| Android NDK (optional) | 26.x | Only required when adding native C/C++ modules. |
-| Java Development Kit | JDK 17 LTS | Install with Android Studio or via [Adoptium Temurin 17](https://adoptium.net/temurin/releases/?version=17). |
+| Component               | Version                    | Installation notes                                                                                           |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Android Studio          | Iguana (2023.2.1) or newer | Install from [developer.android.com/studio](https://developer.android.com/studio).                           |
+| Android SDK Platform    | API 35 (Android 15)        | Install via the SDK Manager in Android Studio. Include Android 13/14 if you support older devices.           |
+| Android SDK Build-Tools | 35.0.0                     | Install via SDK Manager.                                                                                     |
+| Android NDK (optional)  | 26.x                       | Only required when adding native C/C++ modules.                                                              |
+| Java Development Kit    | JDK 17 LTS                 | Install with Android Studio or via [Adoptium Temurin 17](https://adoptium.net/temurin/releases/?version=17). |
 
 Environment variables:
 
@@ -69,7 +69,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"   # macOS default; adjust for Wi
 export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
 ```
 
-On Windows, set the equivalent variables through *System Properties → Environment Variables* and restart your terminal.
+On Windows, set the equivalent variables through _System Properties → Environment Variables_ and restart your terminal.
 
 ---
 
@@ -114,7 +114,7 @@ npm run test          # Execute Jest test suite
 To verify native builds:
 
 - **iOS:** Open `ios/Tine.xcworkspace` in Xcode and run the app on a simulator or device.
-- **Android:** From Android Studio, select *Run → Run 'app'*. Alternatively execute `npm run android` with a booted emulator.
+- **Android:** From Android Studio, select _Run → Run 'app'_. Alternatively execute `npm run android` with a booted emulator.
 
 ---
 

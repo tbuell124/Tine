@@ -21,16 +21,16 @@ Return to the detailed sections below for deeper explanations or troubleshooting
 
 ## 1. Prerequisites checklist
 
-| Requirement | Details | Verification |
-| --- | --- | --- |
+| Requirement             | Details                                                                | Verification                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Apple Developer Program | Paid membership ($99/year) using the Apple ID that will upload builds. | Visit [App Store Connect](https://appstoreconnect.apple.com) – ensure you can access the dashboard. |
-| macOS | macOS 13.6 Ventura or newer. Xcode 15 requires at least macOS 13.5. | `sw_vers` |
-| Xcode | Version 15.x installed in `/Applications`. | Launch Xcode → **Xcode ▸ About Xcode** |
-| Command Line Tools | Installed via Xcode preferences. | `xcode-select -p` |
-| Node.js | 20 LTS or 22 LTS. | `node --version` |
-| npm / Yarn | npm 10+ (bundled) or Yarn 4 via Corepack. | `npm --version` or `yarn --version` |
-| CocoaPods | 1.15+. | `pod --version` |
-| Expo account | Free Expo account for EAS services. | `npx expo login` |
+| macOS                   | macOS 13.6 Ventura or newer. Xcode 15 requires at least macOS 13.5.    | `sw_vers`                                                                                           |
+| Xcode                   | Version 15.x installed in `/Applications`.                             | Launch Xcode → **Xcode ▸ About Xcode**                                                              |
+| Command Line Tools      | Installed via Xcode preferences.                                       | `xcode-select -p`                                                                                   |
+| Node.js                 | 20 LTS or 22 LTS.                                                      | `node --version`                                                                                    |
+| npm / Yarn              | npm 10+ (bundled) or Yarn 4 via Corepack.                              | `npm --version` or `yarn --version`                                                                 |
+| CocoaPods               | 1.15+.                                                                 | `pod --version`                                                                                     |
+| Expo account            | Free Expo account for EAS services.                                    | `npx expo login`                                                                                    |
 
 ### If the App Store refuses to install Xcode
 
@@ -90,7 +90,7 @@ Restart Xcode after running the commands. Reopen your simulator list to regenera
    - `expo.ios.bundleIdentifier` – Reverse-DNS ID (e.g., `com.tylerbuell.tine`). Must match the App ID in App Store Connect.
    - `expo.version` – User-facing version (e.g., `1.0.0`).
    - `expo.runtimeVersion` – Align with release cycle if using OTA updates.
-   Update values as needed and commit changes.
+     Update values as needed and commit changes.
 6. **Set build numbers**:
    - `expo.ios.buildNumber` controls the CFBundleVersion. Increment per release (e.g., `1`, `2`, ...).
    - Keep a changelog mapping build numbers to release notes.
@@ -147,12 +147,16 @@ The sections below document both options.
    }
    ```
 3. **Configure credentials**:
+
    ```bash
    eas build:configure
    ```
+
    - Sign in with your Expo account.
    - Allow Expo to manage certificates automatically (recommended). Provide your Apple Developer credentials when prompted.
+
 4. **Trigger a build**:
+
    ```bash
    # Internal testing build (TestFlight)
    eas build --platform ios --profile preview
@@ -160,6 +164,7 @@ The sections below document both options.
    # App Store-ready build
    eas build --platform ios --profile production
    ```
+
 5. **Download the artifact** once the build completes. Use the URL printed in the terminal or `eas build:list` to copy it.
 6. **Submit to App Store Connect**:
    ```bash
@@ -208,13 +213,13 @@ The sections below document both options.
 
 ## 6. Quality assurance
 
-| Stage | Commands / Actions |
-| --- | --- |
-| Automated checks | `npm run lint`, `npm run test`, `npm run format:check` |
-| Simulator smoke test | `npx expo run:ios` → Launch on multiple simulators (iPhone SE, 14 Pro, etc.). |
-| Device testing | Install via TestFlight or `eas build --profile preview` and ensure audio capture works with minimal latency. |
-| Accessibility | Verify VoiceOver labels, large text support, and sufficient contrast. |
-| Performance | Use **Instruments ▸ Time Profiler** while tuning to confirm the render loop and audio threads stay below 16 ms/frame. |
+| Stage                | Commands / Actions                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Automated checks     | `npm run lint`, `npm run test`, `npm run format:check`                                                                |
+| Simulator smoke test | `npx expo run:ios` → Launch on multiple simulators (iPhone SE, 14 Pro, etc.).                                         |
+| Device testing       | Install via TestFlight or `eas build --profile preview` and ensure audio capture works with minimal latency.          |
+| Accessibility        | Verify VoiceOver labels, large text support, and sufficient contrast.                                                 |
+| Performance          | Use **Instruments ▸ Time Profiler** while tuning to confirm the render loop and audio threads stay below 16 ms/frame. |
 
 Capture screenshots (6.7" and 6.1") and a short App Preview video while testing.
 
@@ -237,12 +242,12 @@ Capture screenshots (6.7" and 6.1") and a short App Preview video while testing.
 
 ## 8. Post-release monitoring
 
-| Task | Tool |
-| --- | --- |
-| Crash monitoring | Xcode Organizer → **Crashes**, or integrate Sentry/Firebase Crashlytics via native modules. |
-| Analytics | Expo Updates analytics, Segment, or custom solutions (ensure privacy compliance). |
-| User feedback | App Store reviews, in-app prompts, or TestFlight feedback. |
-| Performance audits | Collect latency metrics from testers, track frame times using Instruments. |
+| Task               | Tool                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| Crash monitoring   | Xcode Organizer → **Crashes**, or integrate Sentry/Firebase Crashlytics via native modules. |
+| Analytics          | Expo Updates analytics, Segment, or custom solutions (ensure privacy compliance).           |
+| User feedback      | App Store reviews, in-app prompts, or TestFlight feedback.                                  |
+| Performance audits | Collect latency metrics from testers, track frame times using Instruments.                  |
 
 Plan hotfix releases by incrementing `expo.version` (marketing version) and `expo.ios.buildNumber`.
 
@@ -250,27 +255,27 @@ Plan hotfix releases by incrementing `expo.version` (marketing version) and `exp
 
 ## 9. Troubleshooting reference
 
-| Issue | Resolution |
-| --- | --- |
-| `@shopify/react-native-skia` version not found | Use `npm view @shopify/react-native-skia versions` to find a published release, then run `npx expo install @shopify/react-native-skia@<version>` before `npm install`. |
-| `ConfigError: Cannot determine the project's Expo SDK version` | Occurs when `expo` is missing due to failed install. Resolve dependency issues, then rerun `npm install`. |
-| Legacy `expo-cli` warning about Node 17+ | Always use `npx expo <command>` with Node 20 LTS. Avoid the deprecated global `expo-cli`. |
-| Codesign failures in Xcode | Delete derived data, ensure the correct team is selected, and verify certificates in **Keychain Access**. Revoke and recreate certificates in App Store Connect if necessary. |
-| Build stuck processing in App Store Connect | Confirm version/build numbers incremented, check Apple’s System Status, and ensure the archive was uploaded without bitcode. |
-| TestFlight install fails | Remove old builds from the device, install via TestFlight link, and ensure the device runs iOS 15+. |
+| Issue                                                          | Resolution                                                                                                                                                                    |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@shopify/react-native-skia` version not found                 | Use `npm view @shopify/react-native-skia versions` to find a published release, then run `npx expo install @shopify/react-native-skia@<version>` before `npm install`.        |
+| `ConfigError: Cannot determine the project's Expo SDK version` | Occurs when `expo` is missing due to failed install. Resolve dependency issues, then rerun `npm install`.                                                                     |
+| Legacy `expo-cli` warning about Node 17+                       | Always use `npx expo <command>` with Node 20 LTS. Avoid the deprecated global `expo-cli`.                                                                                     |
+| Codesign failures in Xcode                                     | Delete derived data, ensure the correct team is selected, and verify certificates in **Keychain Access**. Revoke and recreate certificates in App Store Connect if necessary. |
+| Build stuck processing in App Store Connect                    | Confirm version/build numbers incremented, check Apple’s System Status, and ensure the archive was uploaded without bitcode.                                                  |
+| TestFlight install fails                                       | Remove old builds from the device, install via TestFlight link, and ensure the device runs iOS 15+.                                                                           |
 
 ---
 
 ## 10. Release timeline template
 
-| Day | Task |
-| --- | --- |
-| -7 | Finalize feature scope, cut a release branch (`release/<version>`). |
-| -5 | Run automated checks, update changelog, bump version/build numbers. |
-| -4 | QA on devices, capture screenshots/video. |
-| -3 | Trigger EAS production build. |
-| -2 | Submit to App Review. |
-| 0 | Release approved build, monitor metrics. |
-| +1 | Collect feedback, plan patch if needed. |
+| Day | Task                                                                |
+| --- | ------------------------------------------------------------------- |
+| -7  | Finalize feature scope, cut a release branch (`release/<version>`). |
+| -5  | Run automated checks, update changelog, bump version/build numbers. |
+| -4  | QA on devices, capture screenshots/video.                           |
+| -3  | Trigger EAS production build.                                       |
+| -2  | Submit to App Review.                                               |
+| 0   | Release approved build, monitor metrics.                            |
+| +1  | Collect feedback, plan patch if needed.                             |
 
 Maintain this cadence to ensure predictable release cycles.

@@ -8,9 +8,8 @@ export { PITCH_EVENT_NAME } from './pitchTypes';
 const hasAudioContext =
   typeof window !== 'undefined' &&
   (typeof window.AudioContext !== 'undefined' ||
-    typeof (
-      window as typeof window & { webkitAudioContext?: typeof AudioContext }
-    ).webkitAudioContext !== 'undefined');
+    typeof (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext !== 'undefined');
 
 const isWebSupported =
   hasAudioContext &&
@@ -50,10 +49,12 @@ const moduleImpl = {
     return {
       ...result,
       threshold: result.threshold,
+      estimator: options.estimator ?? 'yin',
+      neuralReady: result.neuralReady ?? false,
     } satisfies StartResult;
   },
   async stop(): Promise<boolean> {
-    return detector.stop();
+    return await detector.stop();
   },
   setThreshold(threshold: number): void {
     detector.setThreshold(threshold);

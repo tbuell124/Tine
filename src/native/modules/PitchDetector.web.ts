@@ -6,7 +6,10 @@ import PitchDetectorModule, {
 } from './specs/PitchDetectorNativeModule';
 
 const eventSource = PitchDetectorModule as typeof PitchDetectorModule & {
-  addListener?: (eventName: string, listener: (event: PitchEvent) => void) => { remove: () => void };
+  addListener?: (
+    eventName: string,
+    listener: (event: PitchEvent) => void,
+  ) => { remove: () => void };
   removeListeners?: (eventName: string) => void;
   removeAllListeners?: (eventName: string) => void;
 };
@@ -18,11 +21,16 @@ type Subscription = {
 };
 
 export async function start(options: StartOptions = {}): Promise<StartResult> {
-  return PitchDetectorModule.start(options);
+  const result = await PitchDetectorModule.start(options);
+  return {
+    ...result,
+    estimator: options.estimator ?? result.estimator,
+    neuralReady: result.neuralReady,
+  };
 }
 
 export async function stop(): Promise<boolean> {
-  return PitchDetectorModule.stop();
+  return await PitchDetectorModule.stop();
 }
 
 export function setThreshold(threshold: number): void {

@@ -25,7 +25,9 @@ const enqueue = (event: LogEvent) => {
 
 const emit = (event: LogEvent) => {
   enqueue(event);
-  listeners.forEach((listener) => listener(event));
+  listeners.forEach((listener) => {
+    listener(event);
+  });
 };
 
 const formatConsoleMessage = (event: LogEvent) => {
@@ -71,9 +73,12 @@ const createLogEvent = (level: LogLevel, tag: string, message: string, data?: un
 };
 
 export const logger = {
-  info: (tag: string, message: string, data?: unknown) => createLogEvent('info', tag, message, data),
-  warn: (tag: string, message: string, data?: unknown) => createLogEvent('warn', tag, message, data),
-  error: (tag: string, message: string, data?: unknown) => createLogEvent('error', tag, message, data),
+  info: (tag: string, message: string, data?: unknown) =>
+    createLogEvent('info', tag, message, data),
+  warn: (tag: string, message: string, data?: unknown) =>
+    createLogEvent('warn', tag, message, data),
+  error: (tag: string, message: string, data?: unknown) =>
+    createLogEvent('error', tag, message, data),
   subscribe: (listener: (event: LogEvent) => void) => {
     listeners.add(listener);
     return () => listeners.delete(listener);

@@ -1,13 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { midiToNoteName } from '../utils/music';
-import type { NoteName } from '../utils/music';
-import type { SpringState } from '../utils/spring';
 import { useNotifications } from './NotificationContext';
 import { getMonotonicTime } from '../utils/clock';
 import { logger } from '../utils/logger';
+import { midiToNoteName } from '../utils/music';
+import type { NoteName } from '../utils/music';
+import type { SpringState } from '../utils/spring';
 
 export const SENSITIVITY_PRESETS = [
   {
@@ -144,10 +144,7 @@ const DEFAULT_SENSITIVITY_PRESET = SENSITIVITY_PRESETS[1];
 
 type PersistentSettings = Pick<
   TunerSettings,
-  | 'sensitivityRange'
-  | 'sensitivityProfile'
-  | 'lockThreshold'
-  | 'lockDwellTime'
+  'sensitivityRange' | 'sensitivityProfile' | 'lockThreshold' | 'lockDwellTime'
 >;
 
 const clampNumber = (value: number, min: number, max: number): number =>
@@ -173,9 +170,7 @@ const clampBufferSize = (bufferSize: number): number =>
   Math.round(clampNumber(bufferSize, DETECTOR_BUFFER_MIN, DETECTOR_BUFFER_MAX));
 
 const clampDetectorThreshold = (threshold: number): number =>
-  parseFloat(
-    clampNumber(threshold, DETECTOR_THRESHOLD_MIN, DETECTOR_THRESHOLD_MAX).toFixed(3),
-  );
+  parseFloat(clampNumber(threshold, DETECTOR_THRESHOLD_MIN, DETECTOR_THRESHOLD_MAX).toFixed(3));
 
 const findPresetById = (id: SensitivityPresetId | undefined) =>
   SENSITIVITY_PRESETS.find((preset) => preset.id === id);
@@ -205,7 +200,10 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
       : undefined;
 
   if (payload.sensitivityRange !== undefined) {
-    const matchedPreset = findPresetByRange(payload.sensitivityRange as SensitivityRange);
+    const matchedPreset =
+      typeof payload.sensitivityRange === 'number'
+        ? findPresetByRange(payload.sensitivityRange)
+        : undefined;
     if (matchedPreset) {
       resolvedPreset = matchedPreset;
     }
@@ -223,16 +221,14 @@ const normaliseSettingsPayload = (payload: Partial<TunerSettings>): Partial<Tune
   if (payload.lockThreshold !== undefined) {
     result.lockThreshold = Number.isFinite(payload.lockThreshold)
       ? parseFloat(
-          clampNumber(payload.lockThreshold, LOCK_THRESHOLD_MIN, LOCK_THRESHOLD_MAX).toFixed(2)
+          clampNumber(payload.lockThreshold, LOCK_THRESHOLD_MIN, LOCK_THRESHOLD_MAX).toFixed(2),
         )
       : initialState.settings.lockThreshold;
   }
 
   if (payload.lockDwellTime !== undefined) {
     result.lockDwellTime = Number.isFinite(payload.lockDwellTime)
-      ? parseFloat(
-          clampNumber(payload.lockDwellTime, LOCK_DWELL_MIN, LOCK_DWELL_MAX).toFixed(2)
-        )
+      ? parseFloat(clampNumber(payload.lockDwellTime, LOCK_DWELL_MIN, LOCK_DWELL_MAX).toFixed(2))
       : initialState.settings.lockDwellTime;
   }
 
@@ -247,7 +243,7 @@ const extractPersistentSettings = (settings: TunerSettings): PersistentSettings 
   sensitivityRange: settings.sensitivityRange,
   sensitivityProfile: settings.sensitivityProfile,
   lockThreshold: settings.lockThreshold,
-  lockDwellTime: settings.lockDwellTime
+  lockDwellTime: settings.lockDwellTime,
 });
 
 export const resolveSensitivityPreset = (
@@ -281,35 +277,35 @@ const initialState: TunerState = {
     cents: 0,
     noteName: midiToNoteName(DEFAULT_A4_MIDI),
     confidence: 0,
-    updatedAt: 0
+    updatedAt: 0,
   },
   angles: {
     outer: 0,
-    inner: 0
+    inner: 0,
   },
   spring: {
     angle: 0,
     velocity: 0,
-    targetAngle: 0
+    targetAngle: 0,
   },
   settings: {
     sensitivityRange: DEFAULT_SENSITIVITY_PRESET.range,
     sensitivityProfile: DEFAULT_SENSITIVITY_PRESET.id,
     lockThreshold: 2,
     lockDwellTime: 0.4,
-    manualMode: false
+    manualMode: false,
   },
   signal: {
     phase: 'listening',
     lastChange: getMonotonicTime(),
     freezeUntil: 0,
-    lastHeardAt: 0
-  }
+    lastHeardAt: 0,
+  },
 };
 
 const TunerStateContext = React.createContext<TunerState | undefined>(undefined);
 const TunerDispatchContext = React.createContext<React.Dispatch<TunerAction> | undefined>(
-  undefined
+  undefined,
 );
 
 function tunerReducer(state: TunerState, action: TunerAction): TunerState {
@@ -332,13 +328,17 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
         nextPitch.noteName = null;
       }
 
-      if (providedMidi !== undefined || action.payload.cents !== undefined || action.payload.confidence !== undefined) {
+      if (
+        providedMidi !== undefined ||
+        action.payload.cents !== undefined ||
+        action.payload.confidence !== undefined
+      ) {
         nextPitch.updatedAt = action.payload.updatedAt ?? getMonotonicTime();
       }
 
       return {
         ...state,
-        pitch: nextPitch
+        pitch: nextPitch,
       };
     }
     case 'SET_ANGLES': {
@@ -353,25 +353,25 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
 
       return {
         ...state,
-        angles: { ...state.angles, ...action.payload }
+        angles: { ...state.angles, ...action.payload },
       };
     }
     case 'SET_SPRING':
       return {
         ...state,
-        spring: { ...state.spring, ...action.payload }
+        spring: { ...state.spring, ...action.payload },
       };
     case 'UPDATE_SETTINGS': {
       const nextSettings = normaliseSettingsPayload(action.payload);
       return {
         ...state,
-        settings: { ...state.settings, ...nextSettings }
+        settings: { ...state.settings, ...nextSettings },
       };
     }
     case 'SET_SIGNAL':
       return {
         ...state,
-        signal: { ...state.signal, ...action.payload }
+        signal: { ...state.signal, ...action.payload },
       };
     case 'RESET':
       return {
@@ -380,7 +380,7 @@ function tunerReducer(state: TunerState, action: TunerAction): TunerState {
         angles: { ...initialState.angles },
         spring: { ...initialState.spring },
         settings: { ...initialState.settings },
-        signal: { ...initialState.signal }
+        signal: { ...initialState.signal },
       };
     default: {
       const exhaustiveCheck: never = action;
@@ -474,7 +474,6 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
             hasHydratedSettingsRef.current = true;
           }
           dispatch({ type: 'UPDATE_SETTINGS', payload: parsed });
-          return;
         }
       } catch (error) {
         logger.warn('settings', 'Failed to restore tuner settings from storage', { error });
@@ -489,7 +488,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
       }
     };
 
-    void hydrateSettings();
+    hydrateSettings().catch(() => {});
 
     return () => {
       isMounted = false;
@@ -513,7 +512,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
       }
     };
 
-    void persistSettings();
+    persistSettings().catch(() => {});
   }, [state.settings, showNotification]);
 
   React.useEffect(() => {
@@ -787,18 +786,26 @@ export function useTunerActions() {
 
   return React.useMemo(
     () => ({
-      setPitch: (pitch: Partial<PitchState>) => dispatch({ type: 'SET_PITCH', payload: pitch }),
-      setAngles: (angles: Partial<AngleState>, meta?: SetAnglesMeta) =>
-        dispatch({ type: 'SET_ANGLES', payload: angles, meta }),
-      setSpring: (spring: Partial<SpringRuntimeState>) =>
-        dispatch({ type: 'SET_SPRING', payload: spring }),
-      updateSettings: (settings: Partial<TunerSettings>) =>
-        dispatch({ type: 'UPDATE_SETTINGS', payload: settings }),
-      setSignal: (signal: Partial<SignalState>) =>
-        dispatch({ type: 'SET_SIGNAL', payload: signal }),
-      reset: () => dispatch({ type: 'RESET' })
+      setPitch: (pitch: Partial<PitchState>) => {
+        dispatch({ type: 'SET_PITCH', payload: pitch });
+      },
+      setAngles: (angles: Partial<AngleState>, meta?: SetAnglesMeta) => {
+        dispatch({ type: 'SET_ANGLES', payload: angles, meta });
+      },
+      setSpring: (spring: Partial<SpringRuntimeState>) => {
+        dispatch({ type: 'SET_SPRING', payload: spring });
+      },
+      updateSettings: (settings: Partial<TunerSettings>) => {
+        dispatch({ type: 'UPDATE_SETTINGS', payload: settings });
+      },
+      setSignal: (signal: Partial<SignalState>) => {
+        dispatch({ type: 'SET_SIGNAL', payload: signal });
+      },
+      reset: () => {
+        dispatch({ type: 'RESET' });
+      },
     }),
-    [dispatch]
+    [dispatch],
   );
 }
 
@@ -813,8 +820,8 @@ export function useTuner() {
   return React.useMemo(
     () => ({
       state,
-      actions
+      actions,
     }),
-    [state, actions]
+    [state, actions],
   );
 }

@@ -8,8 +8,8 @@
  * platform.
  */
 
-import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 /** Size of each detent in cents. Used by the UI when crossing tick marks. */
 export const DETENT_STEP_CENTS = 5;
@@ -25,20 +25,19 @@ let lastRumbleTimestamp = 0;
 
 /**
  * Ensures we only attempt to trigger haptics on hardware that supports it.
- * The result is cached because `isAvailableAsync` performs a native roundtrip.
+ * The result is cached based on platform and the presence of the Haptics API.
  */
 async function isHapticsSupported(): Promise<boolean> {
   if (cachedSupport != null) {
     return cachedSupport;
   }
 
-  try {
-    cachedSupport = await Haptics.isAvailableAsync();
-  } catch (error) {
-    console.warn('[haptics] Unable to determine availability', error);
-    cachedSupport = false;
-  }
+  const hasAPI =
+    typeof Haptics.impactAsync === 'function' &&
+    typeof Haptics.notificationAsync === 'function' &&
+    Platform.OS !== 'web';
 
+  cachedSupport = hasAPI;
   return cachedSupport;
 }
 
@@ -91,16 +90,10 @@ export async function maybeTriggerOutOfTuneRumble(centsOffset: number): Promise<
 
   if (Platform.OS === 'ios') {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    return;
-  }
-
-  if (Platform.OS === 'android') {
+  } else if (Platform.OS === 'android') {
     // On Android the Expo wrapper drives VibrationEffect under the hood.
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    return;
   }
-
-  // Other platforms (web/desktop) simply ignore the request.
 }
 
 /**

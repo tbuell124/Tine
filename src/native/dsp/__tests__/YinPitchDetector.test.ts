@@ -1,4 +1,4 @@
-import {YinPitchDetector} from '../YinPitchDetector';
+import { YinPitchDetector } from '../YinPitchDetector';
 
 describe('YinPitchDetector', () => {
   const sampleRate = 48000;

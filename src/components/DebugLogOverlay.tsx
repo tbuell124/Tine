@@ -1,7 +1,6 @@
+import { logger, type LogEvent } from '@utils/logger';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-
-import { logger, type LogEvent } from '@utils/logger';
 
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -49,7 +48,9 @@ export const DebugLogOverlay: React.FC = () => {
         <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollerContent}>
           {events.map((event) => (
             <View key={event.id} style={styles.row}>
-              <Text style={[styles.level, { color: levelColor[event.level] }]}>[{event.level}]</Text>
+              <Text style={[styles.level, { color: levelColor[event.level] }]}>
+                [{event.level}]
+              </Text>
               <Text style={styles.tag}>{event.tag}</Text>
               <Text style={styles.time}>{formatTime(event.timestamp)}</Text>
               <Text numberOfLines={2} ellipsizeMode="tail" style={styles.message}>
@@ -83,6 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.3,
+    fontFamily: 'Lato',
   },
   scroller: {
     maxHeight: 140,
@@ -98,21 +100,25 @@ const styles = StyleSheet.create({
   level: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: 'Lato',
   },
   tag: {
     color: '#bae6fd',
     fontSize: 11,
     minWidth: 70,
+    fontFamily: 'Lato',
   },
   time: {
     color: '#94a3b8',
     fontSize: 10,
     minWidth: 70,
     textAlign: 'right',
+    fontFamily: 'Lato',
   },
   message: {
     color: '#cbd5e1',
     fontSize: 11,
     flex: 1,
+    fontFamily: 'Lato',
   },
 });

@@ -11,27 +11,20 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "jsEngine": "hermes",
     "ios": {
       "supportsTablet": true,
       "buildNumber": "1.0.0",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "TunePlay uses the microphone to analyze instrument pitch in real time.",
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "UIBackgroundModes": ["audio"]
       },
       "bundleIdentifier": "com.anonymous.tine"
     },
     "android": {
       "versionCode": 1,
-      "permissions": [
-        "RECORD_AUDIO",
-        "VIBRATE"
-      ],
+      "permissions": ["RECORD_AUDIO", "VIBRATE"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

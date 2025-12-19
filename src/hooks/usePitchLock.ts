@@ -1,13 +1,8 @@
-import React from "react";
+import { mixHexColors } from '@utils/color';
+import { triggerSuccessLock } from '@utils/haptics';
+import React from 'react';
 
-import { triggerSuccessLock } from "@utils/haptics";
-import { mixHexColors } from "@utils/color";
-import {
-  resolveTuningState,
-  tuningStateToColor,
-  tuningTheme,
-  type TuningState,
-} from "../theme";
+import { resolveTuningState, tuningStateToColor, tuningTheme, type TuningState } from '../theme';
 
 const RELEASE_THRESHOLD_MULTIPLIER = 1.75;
 const MICRO_JITTER_INTERVAL_MS = 80;
@@ -81,13 +76,10 @@ export const usePitchLock = ({
   React.useEffect(() => {
     const now = Date.now();
     const hasPitch = midi !== null;
-    const withinLockWindow =
-      hasPitch && isFiniteCents(cents) && Math.abs(cents) <= lockThreshold;
+    const withinLockWindow = hasPitch && isFiniteCents(cents) && Math.abs(cents) <= lockThreshold;
 
     if (withinLockWindow) {
-      if (lockStartRef.current === null) {
-        lockStartRef.current = now;
-      }
+      lockStartRef.current ??= now;
 
       if (!locked && now - lockStartRef.current >= dwellDuration) {
         setLocked(true);
@@ -119,7 +111,7 @@ export const usePitchLock = ({
     const wasLocked = lastLockStateRef.current;
     if (locked && !wasLocked) {
       lastLockStateRef.current = true;
-      void triggerSuccessLock();
+      triggerSuccessLock().catch(() => {});
       return;
     }
 
@@ -146,9 +138,7 @@ export const usePitchLock = ({
         return;
       }
 
-      if (startTimestamp === null) {
-        startTimestamp = timestamp;
-      }
+      startTimestamp ??= timestamp;
 
       if (timestamp - lastUpdate >= MICRO_JITTER_INTERVAL_MS) {
         const elapsed = (timestamp - startTimestamp) / 1000;
@@ -178,7 +168,7 @@ export const usePitchLock = ({
   }, [cents, locked, midi]);
 
   const accentColor = React.useMemo(() => {
-    if (status === "locked") {
+    if (status === 'locked') {
       const shimmer = mixHexColors(
         tuningTheme.tuningStates.locked.dark,
         tuningTheme.tuningStates.locked.light,

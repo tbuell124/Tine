@@ -1,7 +1,6 @@
+import { useNotifications } from '@state/NotificationContext';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
-import { useNotifications } from '@state/NotificationContext';
 
 export const NotificationSurface: React.FC = () => {
   const { notifications, dismissNotification } = useNotifications();
@@ -31,7 +30,9 @@ export const NotificationSurface: React.FC = () => {
             ) : null}
           </View>
           <Pressable
-            onPress={() => dismissNotification(notification.id)}
+            onPress={() => {
+              dismissNotification(notification.id);
+            }}
             accessibilityRole="button"
             accessibilityLabel="Dismiss notification"
             style={styles.dismissButton}
@@ -63,11 +64,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
   },
   textContainer: {
     flex: 1,
@@ -77,6 +73,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: 'Lato',
   },
   actionButton: {
     marginTop: 6,
@@ -90,6 +87,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontWeight: '600',
     fontSize: 13,
+    fontFamily: 'Lato',
   },
   dismissButton: {
     padding: 4,
@@ -99,6 +97,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 24,
     paddingHorizontal: 4,
+    fontFamily: 'Lato',
   },
 });
 

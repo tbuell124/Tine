@@ -1,12 +1,7 @@
 import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
 import type { TurboModule } from 'react-native';
 
-import {
-  PITCH_EVENT_NAME,
-  type PitchEvent,
-  type StartOptions,
-  type StartResult,
-} from './pitchTypes';
+import type { StartOptions, StartResult } from './pitchTypes';
 
 export type { PitchEvent, StartOptions, StartResult } from './pitchTypes';
 export { PITCH_EVENT_NAME } from './pitchTypes';
@@ -32,14 +27,12 @@ let moduleImpl: Spec | null = null;
 if (isTurboModuleEnabled) {
   try {
     moduleImpl = TurboModuleRegistry.get<Spec>('PitchDetector');
-  } catch (error) {
+  } catch {
     moduleImpl = null;
   }
 }
 
-if (!moduleImpl) {
-  moduleImpl = (NativeModules.PitchDetector as Spec | null) ?? null;
-}
+moduleImpl ??= (NativeModules.PitchDetector as Spec | null) ?? null;
 
 const shouldLogWarnings =
   typeof process === 'undefined' ? true : process.env.NODE_ENV !== 'production';
@@ -62,7 +55,7 @@ const createUnavailableModule = (): Spec => {
     },
     setThreshold() {
       warn();
-    }
+    },
   };
 };
 

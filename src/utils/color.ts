@@ -13,12 +13,12 @@ interface RgbColor {
  * Normalises shorthand hex colour strings (#abc) into their 6-digit form (#aabbcc).
  */
 const normaliseHex = (value: string): string => {
-  const hex = value.replace(/^#/, "").trim();
+  const hex = value.replace(/^#/, '').trim();
   if (hex.length === 3) {
     return hex
-      .split("")
+      .split('')
       .map((char) => char + char)
-      .join("");
+      .join('');
   }
   return hex;
 };
@@ -48,7 +48,9 @@ const parseHexColor = (value: string): RgbColor => {
  */
 const toHex = ({ red, green, blue }: RgbColor): string => {
   const channelToHex = (channel: number) =>
-    Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0");
+    Math.max(0, Math.min(255, Math.round(channel)))
+      .toString(16)
+      .padStart(2, '0');
 
   return `#${channelToHex(red)}${channelToHex(green)}${channelToHex(blue)}`;
 };

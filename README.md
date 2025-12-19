@@ -55,23 +55,23 @@ Follow this checklist before cloning the project. macOS steps are listed first b
 
 ### macOS tooling
 
-| Tool | Minimum version | Install command / link | Notes |
-| --- | --- | --- | --- |
-| Xcode | 15.0 | [Mac App Store](https://apps.apple.com/us/app/xcode/id497799835) or [Apple Developer downloads](https://developer.apple.com/download/all/?q=Xcode) | Launch once after installation to accept the license. |
-| CocoaPods | 1.15 | `sudo gem install cocoapods` | Required for iOS native dependencies. |
-| Watchman | Latest | `brew install watchman` | Improves file watching performance. |
+| Tool      | Minimum version | Install command / link                                                                                                                             | Notes                                                 |
+| --------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Xcode     | 15.0            | [Mac App Store](https://apps.apple.com/us/app/xcode/id497799835) or [Apple Developer downloads](https://developer.apple.com/download/all/?q=Xcode) | Launch once after installation to accept the license. |
+| CocoaPods | 1.15            | `sudo gem install cocoapods`                                                                                                                       | Required for iOS native dependencies.                 |
+| Watchman  | Latest          | `brew install watchman`                                                                                                                            | Improves file watching performance.                   |
 
 > **App Store blocked?** Sign in to [developer.apple.com/download/all](https://developer.apple.com/download/all/?q=Xcode) and download the `.xip` installer directly. Mount the archive, drag Xcode into `/Applications`, then launch it once to finish setup.
 
 ### Cross-platform tooling
 
-| Tool | Recommended version | Install instructions |
-| --- | --- | --- |
-| Node.js | 20 LTS or 22 LTS | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) and run `nvm install 20 && nvm use 20` (or `nvm install 22 && nvm use 22`). Expo SDK 54 officially supports the current LTS releases. |
-| npm | Bundled with Node | No separate installation required. |
-| Yarn (optional) | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable`. Avoid `npm install --global yarn` if `/usr/local/bin/yarn` already exists. |
-| Git | 2.39+ | `git --version` should report a version. Install via [git-scm.com](https://git-scm.com/downloads) if needed. |
-| Expo CLI | Bundled | Use `npx expo <command>`; no global install required. |
+| Tool            | Recommended version         | Install instructions                                                                                                                                                                                   |
+| --------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Node.js         | 20 LTS or 22 LTS            | Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) and run `nvm install 20 && nvm use 20` (or `nvm install 22 && nvm use 22`). Expo SDK 54 officially supports the current LTS releases. |
+| npm             | Bundled with Node           | No separate installation required.                                                                                                                                                                     |
+| Yarn (optional) | 1.22+ or 4.x (via Corepack) | Enable Corepack with `corepack enable`. Avoid `npm install --global yarn` if `/usr/local/bin/yarn` already exists.                                                                                     |
+| Git             | 2.39+                       | `git --version` should report a version. Install via [git-scm.com](https://git-scm.com/downloads) if needed.                                                                                           |
+| Expo CLI        | Bundled                     | Use `npx expo <command>`; no global install required.                                                                                                                                                  |
 
 If you previously attempted a global Yarn install and saw `EEXIST: file already exists /usr/local/bin/yarnpkg`, remove the conflicting shim (`sudo rm /usr/local/bin/yarn /usr/local/bin/yarnpkg`) or prefer Corepack.
 
@@ -174,16 +174,16 @@ Each guide covers credential setup, build tooling, distribution steps, and post-
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| **Peer dependency conflicts after updating** | Run `npm install --legacy-peer-deps` only as a last resort. Prefer resolving conflicts by aligning versions with Expo SDK 54 compatibility tables. |
-| **`ConfigError: Cannot determine the project's Expo SDK version because the module expo is not installed`** | Ensure `npm install` succeeds. This error is usually triggered when npm cannot reach the registry; fix connectivity and reinstall. |
-| **`expo-cli` Node compatibility warning** | Use the local CLI (`npx expo ...`) with Node 20 or 22. Remove any legacy global `expo-cli` installations that expect Node 16. |
-| **Yarn global install `EEXIST` errors** | Yarn was previously installed. Remove `/usr/local/bin/yarn*` or use Homebrew/Corepack instead of `npm install --global yarn`. |
-| **App Store blocks Xcode downloads** | Download the `.xip` installer from the Apple Developer website, or sign out/in of the App Store, clear the App Store cache (`open -a App\ Store --args -reset`), and retry. |
-| **Need to reset Xcode without full reinstall** | Delete Derived Data (`rm -rf ~/Library/Developer/Xcode/DerivedData`), clear simulators (`xcrun simctl delete unavailable`), reset command-line tools (`sudo xcode-select --reset`), and optionally remove cached downloads (`rm -rf ~/Library/Caches/com.apple.dt.Xcode`). |
-| **Android build fails on Apple Silicon** | Install arm64 Android SDK/NDK packages via Android Studio and ensure Rosetta is installed if Gradle plugins require x86 binaries (`softwareupdate --install-rosetta`). |
-| **Metro bundler stuck on port 8081** | Kill other Metro instances (`lsof -n -i4TCP:8081`) and restart `npm run start`. |
+| Symptom                                                                                                     | Fix                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Peer dependency conflicts after updating**                                                                | Run `npm install --legacy-peer-deps` only as a last resort. Prefer resolving conflicts by aligning versions with Expo SDK 54 compatibility tables.                                                                                                                         |
+| **`ConfigError: Cannot determine the project's Expo SDK version because the module expo is not installed`** | Ensure `npm install` succeeds. This error is usually triggered when npm cannot reach the registry; fix connectivity and reinstall.                                                                                                                                         |
+| **`expo-cli` Node compatibility warning**                                                                   | Use the local CLI (`npx expo ...`) with Node 20 or 22. Remove any legacy global `expo-cli` installations that expect Node 16.                                                                                                                                              |
+| **Yarn global install `EEXIST` errors**                                                                     | Yarn was previously installed. Remove `/usr/local/bin/yarn*` or use Homebrew/Corepack instead of `npm install --global yarn`.                                                                                                                                              |
+| **App Store blocks Xcode downloads**                                                                        | Download the `.xip` installer from the Apple Developer website, or sign out/in of the App Store, clear the App Store cache (`open -a App\ Store --args -reset`), and retry.                                                                                                |
+| **Need to reset Xcode without full reinstall**                                                              | Delete Derived Data (`rm -rf ~/Library/Developer/Xcode/DerivedData`), clear simulators (`xcrun simctl delete unavailable`), reset command-line tools (`sudo xcode-select --reset`), and optionally remove cached downloads (`rm -rf ~/Library/Caches/com.apple.dt.Xcode`). |
+| **Android build fails on Apple Silicon**                                                                    | Install arm64 Android SDK/NDK packages via Android Studio and ensure Rosetta is installed if Gradle plugins require x86 binaries (`softwareupdate --install-rosetta`).                                                                                                     |
+| **Metro bundler stuck on port 8081**                                                                        | Kill other Metro instances (`lsof -n -i4TCP:8081`) and restart `npm run start`.                                                                                                                                                                                            |
 
 ## Contributing
 

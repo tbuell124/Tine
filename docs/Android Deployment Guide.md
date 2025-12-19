@@ -21,16 +21,16 @@ Use the detailed sections below for explanations, alternatives, and troubleshoot
 
 ## 1. Prerequisites checklist
 
-| Requirement | Details | Verification |
-| --- | --- | --- |
-| Google Play Console | Active developer account ($25 one-time). | Access [play.google.com/console](https://play.google.com/console) with the publishing Google account. |
-| macOS or Windows | Android Studio Hedgehog or newer installed. | `android-studio --version` (macOS) or check **About Android Studio**. |
-| Node.js | 20 LTS or 22 LTS. | `node --version` |
-| npm / Yarn | npm 10+ (bundled) or Yarn 4 via Corepack. | `npm --version` or `yarn --version` |
-| Java | OpenJDK 17 (bundled with Android Studio). | `java -version` |
-| Android SDK | Platforms 34 & 35, Build-Tools 35.0.0, Platform-Tools latest. | Android Studio ▸ **Settings ▸ Appearance & Behavior ▸ System Settings ▸ Android SDK** |
-| Android NDK | r26c (required for native audio modules). | Android Studio SDK Manager → **SDK Tools** (check “Show Package Details”). |
-| Expo account | Needed for EAS Build (optional). | `npx expo login` |
+| Requirement         | Details                                                       | Verification                                                                                          |
+| ------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Google Play Console | Active developer account ($25 one-time).                      | Access [play.google.com/console](https://play.google.com/console) with the publishing Google account. |
+| macOS or Windows    | Android Studio Hedgehog or newer installed.                   | `android-studio --version` (macOS) or check **About Android Studio**.                                 |
+| Node.js             | 20 LTS or 22 LTS.                                             | `node --version`                                                                                      |
+| npm / Yarn          | npm 10+ (bundled) or Yarn 4 via Corepack.                     | `npm --version` or `yarn --version`                                                                   |
+| Java                | OpenJDK 17 (bundled with Android Studio).                     | `java -version`                                                                                       |
+| Android SDK         | Platforms 34 & 35, Build-Tools 35.0.0, Platform-Tools latest. | Android Studio ▸ **Settings ▸ Appearance & Behavior ▸ System Settings ▸ Android SDK**                 |
+| Android NDK         | r26c (required for native audio modules).                     | Android Studio SDK Manager → **SDK Tools** (check “Show Package Details”).                            |
+| Expo account        | Needed for EAS Build (optional).                              | `npx expo login`                                                                                      |
 
 ### Environment setup tips
 
@@ -74,10 +74,10 @@ Use the detailed sections below for explanations, alternatives, and troubleshoot
 
 ## 3. Choose a build strategy
 
-| Strategy | When to use | Pros | Cons |
-| --- | --- | --- | --- |
+| Strategy                            | When to use                                           | Pros                                                               | Cons                                                                     |
+| ----------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | **Expo Application Services (EAS)** | Standard Expo workflow, minimal native customization. | Managed signing, reproducible builds, integrates with OTA updates. | Requires Expo subscription for high concurrency, relies on cloud builds. |
-| **Local Gradle build** | You need custom native modules or offline builds. | Full control, integrates with existing CI/CD. | Must manage keystores, Gradle, and environment manually. |
+| **Local Gradle build**              | You need custom native modules or offline builds.     | Full control, integrates with existing CI/CD.                      | Must manage keystores, Gradle, and environment manually.                 |
 
 Both approaches are documented below.
 
@@ -112,12 +112,16 @@ Both approaches are documented below.
    }
    ```
 3. **Configure credentials**:
+
    ```bash
    eas build:configure
    ```
+
    - Allow Expo to manage the Android keystore or provide your own (`.jks`).
    - Keep a secure copy of the generated keystore, keystore password, key alias, and key password. Store them in a secrets manager.
+
 4. **Kick off a build**:
+
    ```bash
    # Internal testers (APK sideload)
    eas build --platform android --profile preview
@@ -125,6 +129,7 @@ Both approaches are documented below.
    # Play Store submission (AAB)
    eas build --platform android --profile production
    ```
+
 5. **Distribute the artifact**:
    - APK: share directly with testers or upload to Google Play Internal Testing.
    - AAB: upload via Play Console → **Testing** → **Internal testing** or **Production**.
@@ -157,6 +162,7 @@ Both approaches are documented below.
      MYAPP_UPLOAD_KEY_PASSWORD=********
      ```
    - Edit `android/app/build.gradle` (inside `android { defaultConfig { ... } }`):
+
      ```groovy
      signingConfigs {
          release {
@@ -176,6 +182,7 @@ Both approaches are documented below.
          }
      }
      ```
+
 5. **Assemble artifacts**:
    ```bash
    cd android
@@ -189,13 +196,13 @@ Both approaches are documented below.
 
 ## 6. Quality assurance
 
-| Stage | Actions |
-| --- | --- |
-| Automated checks | `npm run lint`, `npm run test`, `npm run format:check`. |
-| Emulator testing | `npx expo run:android` → select Pixel emulator. Test tuning UI, orientation, resume-from-background. |
-| Device testing | Install APK via `adb install` on Pixel or Samsung hardware. Confirm microphone permissions and low latency. |
-| Performance | Use **Android Studio ▸ Profiler** to monitor CPU/GPU usage during sustained tuning. |
-| Accessibility | Enable TalkBack, large fonts, and contrast checkers. |
+| Stage            | Actions                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| Automated checks | `npm run lint`, `npm run test`, `npm run format:check`.                                                     |
+| Emulator testing | `npx expo run:android` → select Pixel emulator. Test tuning UI, orientation, resume-from-background.        |
+| Device testing   | Install APK via `adb install` on Pixel or Samsung hardware. Confirm microphone permissions and low latency. |
+| Performance      | Use **Android Studio ▸ Profiler** to monitor CPU/GPU usage during sustained tuning.                         |
+| Accessibility    | Enable TalkBack, large fonts, and contrast checkers.                                                        |
 
 Capture screenshots for 6.7" (required) and other sizes if you target tablets.
 
@@ -223,13 +230,13 @@ Capture screenshots for 6.7" (required) and other sizes if you target tablets.
 
 ## 8. Post-release monitoring
 
-| Task | Tool |
-| --- | --- |
-| Crash reporting | Firebase Crashlytics, Sentry, or Google Play Vitals. |
-| ANR tracking | Play Console → **Android vitals** → **ANRs & Crashes**. |
-| Performance metrics | Frame pacing, startup time from Play Console. |
-| User feedback | Read reviews, respond where appropriate, or collect in-app surveys. |
-| OTA updates | If using Expo Updates, set release channels and publish `expo publish` with matching runtime versions. |
+| Task                | Tool                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Crash reporting     | Firebase Crashlytics, Sentry, or Google Play Vitals.                                                   |
+| ANR tracking        | Play Console → **Android vitals** → **ANRs & Crashes**.                                                |
+| Performance metrics | Frame pacing, startup time from Play Console.                                                          |
+| User feedback       | Read reviews, respond where appropriate, or collect in-app surveys.                                    |
+| OTA updates         | If using Expo Updates, set release channels and publish `expo publish` with matching runtime versions. |
 
 Plan hotfixes by incrementing `expo.android.versionCode` and `expo.version`, then rebuilding.
 
@@ -237,29 +244,29 @@ Plan hotfixes by incrementing `expo.android.versionCode` and `expo.version`, the
 
 ## 9. Troubleshooting reference
 
-| Issue | Resolution |
-| --- | --- |
-| `@shopify/react-native-skia` version not found | `npm view @shopify/react-native-skia versions` to find a published version, install via `npx expo install @shopify/react-native-skia@<version>`, then rerun `npm install`. |
-| `ConfigError: Cannot determine the project's Expo SDK version` | This indicates `expo` failed to install. Resolve dependency installation errors and retry. |
-| Gradle `Could not determine java version` | Ensure Java 17 is used. Set `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` on macOS or configure Android Studio to use Embedded JDK. |
-| Emulator microphone not working | Use physical device testing; many emulators do not pipe real microphone audio. |
-| `No matching client found for package name` during Firebase setup | Confirm the package name in `google-services.json` matches `expo.android.package`. |
-| Play Console rejects build due to version code | Increment `expo.android.versionCode` and rebuild. Version codes must strictly increase. |
-| App bundle size warnings | Enable resource shrinking (`shrinkResources true`) and review assets for large audio files. |
+| Issue                                                             | Resolution                                                                                                                                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@shopify/react-native-skia` version not found                    | `npm view @shopify/react-native-skia versions` to find a published version, install via `npx expo install @shopify/react-native-skia@<version>`, then rerun `npm install`. |
+| `ConfigError: Cannot determine the project's Expo SDK version`    | This indicates `expo` failed to install. Resolve dependency installation errors and retry.                                                                                 |
+| Gradle `Could not determine java version`                         | Ensure Java 17 is used. Set `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` on macOS or configure Android Studio to use Embedded JDK.                                   |
+| Emulator microphone not working                                   | Use physical device testing; many emulators do not pipe real microphone audio.                                                                                             |
+| `No matching client found for package name` during Firebase setup | Confirm the package name in `google-services.json` matches `expo.android.package`.                                                                                         |
+| Play Console rejects build due to version code                    | Increment `expo.android.versionCode` and rebuild. Version codes must strictly increase.                                                                                    |
+| App bundle size warnings                                          | Enable resource shrinking (`shrinkResources true`) and review assets for large audio files.                                                                                |
 
 ---
 
 ## 10. Release timeline template
 
-| Day | Task |
-| --- | --- |
-| -7 | Create `release/<version>` branch, freeze new feature merges. |
-| -5 | Update changelog, bump `expo.android.versionCode` and `expo.version`. |
-| -4 | Run automated checks, QA on emulator + physical devices. |
-| -3 | Trigger EAS production build (AAB). |
-| -2 | Upload to Play Console Internal testing, gather feedback. |
-| -1 | Fix blocking issues, prepare store listing updates. |
-| 0 | Roll out staged production release, monitor vitals. |
-| +1 | Respond to feedback, plan follow-up patch if needed. |
+| Day | Task                                                                  |
+| --- | --------------------------------------------------------------------- |
+| -7  | Create `release/<version>` branch, freeze new feature merges.         |
+| -5  | Update changelog, bump `expo.android.versionCode` and `expo.version`. |
+| -4  | Run automated checks, QA on emulator + physical devices.              |
+| -3  | Trigger EAS production build (AAB).                                   |
+| -2  | Upload to Play Console Internal testing, gather feedback.             |
+| -1  | Fix blocking issues, prepare store listing updates.                   |
+| 0   | Roll out staged production release, monitor vitals.                   |
+| +1  | Respond to feedback, plan follow-up patch if needed.                  |
 
 Following this cadence keeps Android releases predictable and reduces regression risk.

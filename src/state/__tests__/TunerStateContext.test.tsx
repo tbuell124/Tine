@@ -1,8 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
-import { render, waitFor } from '@testing-library/react-native';
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { TunerProvider, useTuner, __testing } from '../TunerStateContext';
 
@@ -70,12 +69,9 @@ describe('TunerProvider persistence', () => {
       </TunerProvider>,
     );
 
-    await waitFor(() =>
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        'tine:tunerSettings',
-        expect.any(String),
-      ),
-    );
+    await waitFor(() => {
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('tine:tunerSettings', expect.any(String));
+    });
 
     const lastCall = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1);
     expect(lastCall).toBeDefined();

@@ -22,7 +22,7 @@ describe('PitchDetector native module resolution', () => {
     jest.doMock('react-native', () => ({
       NativeModules: {},
       Platform: { OS: 'ios' },
-      TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) }
+      TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) },
     }));
 
     const module = await import('../PitchDetectorNativeModule');
@@ -44,7 +44,7 @@ describe('PitchDetector native module resolution', () => {
     const startMock = jest.fn().mockResolvedValue({
       sampleRate: 48000,
       bufferSize: 2048,
-      threshold: 0.15
+      threshold: 0.15,
     });
     const stopMock = jest.fn().mockResolvedValue(true);
     const setThresholdMock = jest.fn();
@@ -54,11 +54,11 @@ describe('PitchDetector native module resolution', () => {
         PitchDetector: {
           start: startMock,
           stop: stopMock,
-          setThreshold: setThresholdMock
-        } satisfies Spec
+          setThreshold: setThresholdMock,
+        } satisfies Spec,
       },
       Platform: { OS: 'ios' },
-      TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) }
+      TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) },
     }));
 
     const module = await import('../PitchDetectorNativeModule');
@@ -69,7 +69,7 @@ describe('PitchDetector native module resolution', () => {
     await expect(spec.start()).resolves.toEqual({
       sampleRate: 48000,
       bufferSize: 2048,
-      threshold: 0.15
+      threshold: 0.15,
     });
     await expect(spec.stop()).resolves.toBe(true);
     spec.setThreshold(0.25);

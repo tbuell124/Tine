@@ -1,7 +1,6 @@
 import '@testing-library/jest-native/extend-expect';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __reanimatedWorkletInit: () => void;
 }
 

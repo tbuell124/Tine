@@ -47,7 +47,7 @@ const SAMPLE_NOTES = [
   { name: 'D3', frequency: 146.83 },
   { name: 'G3', frequency: 196.0 },
   { name: 'B3', frequency: 246.94 },
-  { name: 'E4', frequency: 329.63 }
+  { name: 'E4', frequency: 329.63 },
 ] as const;
 
 const DEFAULT_SNAPSHOT: PitchDetectionSnapshot = {
@@ -55,7 +55,7 @@ const DEFAULT_SNAPSHOT: PitchDetectionSnapshot = {
   frequency: SAMPLE_NOTES[0].frequency,
   cents: 0,
   energy: 0,
-  locked: false
+  locked: false,
 };
 
 type NativeAudioModule =
@@ -77,15 +77,11 @@ const getNativeAudioModule = (): NativeAudioModule =>
  * familiar motion, and we avoid instantiating `NativeEventEmitter` with a null
  * module which previously crashed the foundation app.
  */
-export const usePitchDetection = (
-  options: UsePitchDetectionOptions
-): UsePitchDetectionResult => {
+export const usePitchDetection = (options: UsePitchDetectionOptions): UsePitchDetectionResult => {
   const { enabled } = options;
   const nativeModuleRef = useRef<NativeAudioModule>();
 
-  if (nativeModuleRef.current === undefined) {
-    nativeModuleRef.current = getNativeAudioModule();
-  }
+  nativeModuleRef.current ??= getNativeAudioModule();
 
   const [noteIndex, setNoteIndex] = useState(0);
   const [cents, setCents] = useState(0);
@@ -107,9 +103,7 @@ export const usePitchDetection = (
       // No native module in this runtime (likely Expo Go); keep returning
       // simulated frames without warning spam in production builds.
       if (process.env.NODE_ENV !== 'production') {
-        console.info(
-          '[TunePlay] Native audio module missing – using simulated pitch detection.'
-        );
+        console.info('[TunePlay] Native audio module missing – using simulated pitch detection.');
       }
       return;
     }
@@ -146,11 +140,11 @@ export const usePitchDetection = (
 
     if (Platform.OS !== 'android') {
       // On iOS and other platforms we can kick off the async start immediately.
-      startNativeModule();
+      startNativeModule().catch(() => {});
     } else {
       // Android occasionally needs an extra frame before the bridge is ready.
       const handle = setTimeout(() => {
-        startNativeModule();
+        startNativeModule().catch(() => {});
       }, 0);
       return () => {
         cancelled = true;
@@ -182,7 +176,9 @@ export const usePitchDetection = (
       setNoteIndex((current) => (current + 1) % SAMPLE_NOTES.length);
     }, 2000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [enabled]);
 
   useEffect(() => {
@@ -199,7 +195,9 @@ export const usePitchDetection = (
       setEnergy(Math.abs(Math.cos(now)));
     }, 120);
 
-    return () => clearInterval(tick);
+    return () => {
+      clearInterval(tick);
+    };
   }, [enabled]);
 
   const currentNote = SAMPLE_NOTES[noteIndex];
@@ -211,14 +209,14 @@ export const usePitchDetection = (
       frequency: currentNote.frequency,
       cents,
       energy,
-      locked
+      locked,
     };
   }, [currentNote.frequency, currentNote.name, cents, energy]);
 
   return {
     snapshot: enabled ? snapshot : DEFAULT_SNAPSHOT,
     isNativeModuleAvailable: nativeModuleRef.current != null,
-    mode: enabled ? mode : 'simulated'
+    mode: enabled ? mode : 'simulated',
   };
 };
 

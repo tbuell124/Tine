@@ -8,7 +8,10 @@ type TuningForkLogoProps = {
   color?: string;
 };
 
-export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogoProps): JSX.Element {
+export function TuningForkLogo({
+  size = 120,
+  color = '#38bdf8',
+}: TuningForkLogoProps): JSX.Element {
   // Derive ratios once so all pieces of the fork remain proportional at any size.
   const prongWidth = size * 0.18;
   const prongHeight = size * 0.55;
@@ -20,8 +23,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
   const borderThickness = size * 0.04;
 
   return (
-    <View style={[styles.wrapper, { width: size, height: size }]}> 
-      <View style={[styles.prongsContainer, { height: prongHeight }]}> 
+    <View style={[styles.wrapper, { width: size, height: size }]}>
+      <View style={[styles.prongsContainer, { height: prongHeight }]}>
         <View
           style={[
             styles.prong,
@@ -30,8 +33,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
               height: prongHeight,
               backgroundColor: color,
               borderTopLeftRadius: prongWidth,
-              borderTopRightRadius: prongWidth
-            }
+              borderTopRightRadius: prongWidth,
+            },
           ]}
         />
         <View style={{ width: gapWidth }} />
@@ -43,8 +46,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
               height: prongHeight,
               backgroundColor: color,
               borderTopLeftRadius: prongWidth,
-              borderTopRightRadius: prongWidth
-            }
+              borderTopRightRadius: prongWidth,
+            },
           ]}
         />
       </View>
@@ -54,8 +57,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
           {
             width: prongWidth * 2 + gapWidth,
             height: connectorHeight,
-            backgroundColor: color
-          }
+            backgroundColor: color,
+          },
         ]}
       />
       <View
@@ -64,8 +67,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
           {
             width: stemWidth,
             height: stemHeight,
-            backgroundColor: color
-          }
+            backgroundColor: color,
+          },
         ]}
       />
       <View
@@ -76,8 +79,8 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
             height: resonatorSize,
             borderRadius: resonatorSize / 2,
             borderColor: color,
-            borderWidth: borderThickness
-          }
+            borderWidth: borderThickness,
+          },
         ]}
       />
     </View>
@@ -87,26 +90,26 @@ export function TuningForkLogo({ size = 120, color = '#38bdf8' }: TuningForkLogo
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
-    justifyContent: 'flex-start'
+    justifyContent: 'flex-start',
   },
   prongsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   prong: {
     borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6
+    borderBottomRightRadius: 6,
   },
   connector: {
     marginTop: 4,
-    borderRadius: 999
+    borderRadius: 999,
   },
   stem: {
     marginTop: 4,
-    borderRadius: 999
+    borderRadius: 999,
   },
   resonator: {
-    marginTop: 10
-  }
+    marginTop: 10,
+  },
 });

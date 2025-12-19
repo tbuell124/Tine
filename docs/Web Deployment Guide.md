@@ -38,13 +38,13 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 
 ## 1. Prerequisites checklist
 
-| Requirement | Details | Verification |
-| --- | --- | --- |
-| Node.js | 20 LTS or 22 LTS | `node --version` |
-| npm / Yarn | npm 10+ (bundled) or Yarn 4 via Corepack | `npm --version` or `yarn --version` |
-| Expo CLI (bundled) | Installed via project dependencies | `npx expo --version` |
-| Browser support | Test on Chrome, Safari, and Edge (latest) | Open the local dev server |
-| Hosting account | Netlify, Vercel, or AWS account with permissions to deploy static sites | Log into the chosen provider |
+| Requirement        | Details                                                                 | Verification                        |
+| ------------------ | ----------------------------------------------------------------------- | ----------------------------------- |
+| Node.js            | 20 LTS or 22 LTS                                                        | `node --version`                    |
+| npm / Yarn         | npm 10+ (bundled) or Yarn 4 via Corepack                                | `npm --version` or `yarn --version` |
+| Expo CLI (bundled) | Installed via project dependencies                                      | `npx expo --version`                |
+| Browser support    | Test on Chrome, Safari, and Edge (latest)                               | Open the local dev server           |
+| Hosting account    | Netlify, Vercel, or AWS account with permissions to deploy static sites | Log into the chosen provider        |
 
 ---
 
@@ -66,11 +66,14 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 ## 3. Develop and test locally
 
 1. Start the dev server:
+
    ```bash
    npm run web
    ```
+
    - The command opens Expo DevTools in the browser. Click **Run in web browser** if it does not auto-open.
    - Hot reloading is enabled; changes in `src/` refresh automatically.
+
 2. Verify core flows:
    - Tuner UI renders without console errors.
    - Keyboard/mouse input is not required for tuning; confirm layout responsiveness between mobile and desktop widths.
@@ -86,11 +89,14 @@ This guide explains how to build and ship the web version of **Tine** using Expo
    rm -rf dist
    ```
 2. Export the static site:
+
    ```bash
    npx expo export --platform web --output-dir dist
    ```
+
    - Output: static assets in `dist/` suitable for any static host.
    - Expo automatically inlines the correct asset paths and generates a `manifest.json` for PWA support.
+
 3. Smoke test the build locally:
    ```bash
    npx serve dist
@@ -103,12 +109,14 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 ## 5. Deploy to a host
 
 ### Option A – Netlify (UI-driven)
+
 1. Sign in to Netlify and click **Add new site ▸ Deploy manually**.
 2. Drag the `dist/` folder into the upload target. Wait for the upload to finish.
 3. Netlify assigns a temporary URL. Rename it under **Site settings ▸ Site details** if desired.
 4. Add a custom domain under **Domain management** and enable HTTPS.
 
 ### Option B – Netlify (connected repo)
+
 1. In Netlify, select **Add new site ▸ Import an existing project** and choose GitHub.
 2. Select the `Tine` repository.
 3. Set **Build command** to `npx expo export --platform web --output-dir dist` and **Publish directory** to `dist`.
@@ -116,6 +124,7 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 5. Trigger the initial deploy. Subsequent pushes to the selected branch auto-deploy.
 
 ### Option C – Vercel
+
 1. In Vercel, click **Add New ▸ Project**, then import the GitHub repo.
 2. Override defaults:
    - **Build Command**: `npx expo export --platform web --output-dir dist`
@@ -124,6 +133,7 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 4. Deploy the project. Preview deployments attach to pull requests automatically.
 
 ### Option D – Amazon S3 + CloudFront
+
 1. Create an S3 bucket (enable static website hosting or leave private if fronted only by CloudFront).
 2. Upload the contents of `dist/`:
    ```bash
@@ -146,23 +156,23 @@ This guide explains how to build and ship the web version of **Tine** using Expo
 
 ## 7. Troubleshooting
 
-| Issue | Resolution |
-| --- | --- |
-| `Cannot find module 'expo'` during export | Ensure `npm install` succeeded; delete `node_modules` and reinstall. |
-| Assets missing after deploy | Confirm `dist/` was exported after the last code change and that the host points to `dist/` root. |
-| Blank page in production | Check the browser console for path errors; verify `expo.slug` and hosting base path do not conflict. |
-| Slow first load | Enable CDN caching (Netlify/Vercel automatic, CloudFront recommended) and avoid large uncompressed assets. |
-| Service worker cache serving old build | Use a cache-busting deploy (new `dist/`), then hard refresh or clear site data. |
+| Issue                                     | Resolution                                                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Cannot find module 'expo'` during export | Ensure `npm install` succeeded; delete `node_modules` and reinstall.                                       |
+| Assets missing after deploy               | Confirm `dist/` was exported after the last code change and that the host points to `dist/` root.          |
+| Blank page in production                  | Check the browser console for path errors; verify `expo.slug` and hosting base path do not conflict.       |
+| Slow first load                           | Enable CDN caching (Netlify/Vercel automatic, CloudFront recommended) and avoid large uncompressed assets. |
+| Service worker cache serving old build    | Use a cache-busting deploy (new `dist/`), then hard refresh or clear site data.                            |
 
 ---
 
 ## 8. Release cadence template
 
-| Day | Task |
-| --- | --- |
-| -2 | Cut a release branch and run `npm run lint`, `npm run test`, `npm run format:check`. |
-| -1 | Export a fresh build (`npx expo export --platform web --output-dir dist`) and smoke test with `npx serve dist`. |
-| 0  | Deploy to staging host, verify, then promote to production (Netlify/Vercel branch alias or CloudFront origin swap). |
-| +1 | Monitor errors/analytics; invalidate CDN cache if issues arise. |
+| Day | Task                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------- |
+| -2  | Cut a release branch and run `npm run lint`, `npm run test`, `npm run format:check`.                                |
+| -1  | Export a fresh build (`npx expo export --platform web --output-dir dist`) and smoke test with `npx serve dist`.     |
+| 0   | Deploy to staging host, verify, then promote to production (Netlify/Vercel branch alias or CloudFront origin swap). |
+| +1  | Monitor errors/analytics; invalidate CDN cache if issues arise.                                                     |
 
 Follow this cadence to ensure repeatable, low-risk web releases.

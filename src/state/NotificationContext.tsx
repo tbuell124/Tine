@@ -14,9 +14,7 @@ interface NotificationContextValue {
   dismissNotification: (id: string) => void;
 }
 
-const NotificationContext = React.createContext<NotificationContextValue | undefined>(
-  undefined,
-);
+const NotificationContext = React.createContext<NotificationContextValue | undefined>(undefined);
 
 const DEFAULT_DURATION_MS = 6000;
 
@@ -53,13 +51,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [dismissNotification],
   );
 
-  React.useEffect(() => () => {
-    Object.values(timersRef.current).forEach((timer) => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    });
-  }, []);
+  React.useEffect(
+    () => () => {
+      Object.values(timersRef.current).forEach((timer) => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      });
+    },
+    [],
+  );
 
   const value = React.useMemo(
     () => ({ notifications, showNotification, dismissNotification }),

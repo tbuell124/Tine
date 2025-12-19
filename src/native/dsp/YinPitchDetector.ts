@@ -16,20 +16,7 @@ export interface PitchResult {
 const MIN_THRESHOLD = 0.001;
 const MAX_THRESHOLD = 0.999;
 
-const NOTE_NAMES = [
-  'C',
-  'C#',
-  'D',
-  'D#',
-  'E',
-  'F',
-  'F#',
-  'G',
-  'G#',
-  'A',
-  'A#',
-  'B',
-] as const;
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -79,12 +66,7 @@ export class YinPitchDetector {
       noteName: '',
     };
 
-    if (
-      !samples ||
-      numSamples < this.bufferSize ||
-      this.maxLag < 2 ||
-      this.sampleRate <= 0
-    ) {
+    if (!samples || numSamples < this.bufferSize || this.maxLag < 2 || this.sampleRate <= 0) {
       this.lastResult = emptyResult;
       return this.lastResult;
     }
@@ -212,7 +194,7 @@ export class YinPitchDetector {
       return tau;
     }
 
-    const adjustment = 0.5 * (s0 - s2) / denominator;
+    const adjustment = (0.5 * (s0 - s2)) / denominator;
     return tau + adjustment;
   }
 

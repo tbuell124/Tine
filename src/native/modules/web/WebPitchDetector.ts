@@ -1,7 +1,7 @@
+import { midiToNoteName } from '@utils/music';
 import { PitchDetector as PitchyDetector } from 'pitchy';
 
-import { midiToNoteName } from '@utils/music';
-
+import { neuralHybridEstimator } from './NeuralHybridEstimator';
 import type { PitchEvent, StartOptions, StartResult } from '../specs/pitchTypes';
 
 const A4_FREQUENCY = 440;
@@ -38,8 +38,9 @@ const getAudioContextConstructor = (): typeof AudioContext | undefined => {
   }
 
   const audioContext = window.AudioContext;
-  const legacyAudioContext = (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-    .webkitAudioContext;
+  const legacyAudioContext = (
+    window as typeof window & { webkitAudioContext?: typeof AudioContext }
+  ).webkitAudioContext;
 
   return audioContext ?? legacyAudioContext;
 };
@@ -52,6 +53,10 @@ export class WebPitchDetector {
   private rafId: number | null = null;
   private stream?: MediaStream;
   private clarityThreshold = 0.15;
+  private preferredSampleRate = 44100;
+  private estimator: StartOptions['estimator'] = 'yin';
+  private highpass: BiquadFilterNode | null = null;
+  private lowpass: BiquadFilterNode | null = null;
 
   constructor(private readonly emit: (event: PitchEvent) => void) {}
 
@@ -68,6 +73,9 @@ export class WebPitchDetector {
 
     const bufferSize = options.bufferSize ?? 2048;
     this.clarityThreshold = clampProbability(options.threshold ?? 0.15);
+    this.preferredSampleRate = options.sampleRate ?? 44100;
+    const requestedEstimator = options.estimator ?? 'yin';
+    this.estimator = requestedEstimator === 'neural-hybrid' ? 'yin' : requestedEstimator;
 
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -77,7 +85,11 @@ export class WebPitchDetector {
       },
     });
 
-    this.audioContext = new AudioContextCtor();
+    try {
+      this.audioContext = new AudioContextCtor({ sampleRate: this.preferredSampleRate });
+    } catch {
+      this.audioContext = new AudioContextCtor();
+    }
 
     if (this.audioContext.state === 'suspended') {
       try {
@@ -89,19 +101,31 @@ export class WebPitchDetector {
     }
 
     const source = this.audioContext.createMediaStreamSource(this.stream);
+    this.highpass = this.audioContext.createBiquadFilter();
+    this.highpass.type = 'highpass';
+    this.highpass.frequency.value = 70;
+
+    this.lowpass = this.audioContext.createBiquadFilter();
+    this.lowpass.type = 'lowpass';
+    this.lowpass.frequency.value = 1300;
+
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = bufferSize;
 
     this.buffer = new Float32Array(this.analyser.fftSize);
     this.detector = PitchyDetector.forFloat32Array(this.analyser.fftSize);
 
-    source.connect(this.analyser);
+    source.connect(this.highpass);
+    this.highpass.connect(this.lowpass);
+    this.lowpass.connect(this.analyser);
     this.startPolling();
 
     return {
       sampleRate: this.audioContext.sampleRate,
       bufferSize: this.analyser.fftSize,
       threshold: this.clarityThreshold,
+      estimator: this.estimator,
+      neuralReady: this.estimator === 'neural-hybrid' ? neuralHybridEstimator.isReady() : false,
     };
   }
 
@@ -113,13 +137,17 @@ export class WebPitchDetector {
       this.rafId = null;
     }
 
-    this.stream?.getTracks().forEach((track) => track.stop());
+    this.stream?.getTracks().forEach((track) => {
+      track.stop();
+    });
     this.stream = undefined;
 
     if (this.audioContext) {
       await this.audioContext.close();
       this.audioContext = null;
     }
+    this.highpass = null;
+    this.lowpass = null;
 
     this.analyser = null;
     this.buffer = null;
@@ -155,7 +183,8 @@ export class WebPitchDetector {
     const probability = clampProbability(clarity);
     const timestamp = resolveTimestamp();
 
-    const isValid = Number.isFinite(frequency) && frequency > 0 && probability >= this.clarityThreshold;
+    const isValid =
+      Number.isFinite(frequency) && frequency > 0 && probability >= this.clarityThreshold;
 
     if (!isValid) {
       this.emit({

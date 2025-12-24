@@ -21,7 +21,7 @@ export interface SpringState {
  * Normalizes an angle difference so the spring always takes the shortest path.
  *
  * @param value Angle difference in radians.
- * @returns The wrapped angle in the range [-π, π).
+ * @returns The wrapped angle in the range [-pi, pi).
  */
 function normalizeAngle(value: number): number {
   const twoPi = Math.PI * 2;
@@ -39,7 +39,7 @@ function normalizeAngle(value: number): number {
 /**
  * Advances the angular spring by one timestep using a semi-implicit Euler integrator.
  *
- * The spring is parameterized for a near-critically damped response (ζ ≈ 0.92) with an
+ * The spring is parameterized for a near-critically damped response (zeta ~ 0.92) with an
  * angular natural frequency of roughly 12 rad/s. These values provide a responsive yet
  * stable motion for UI transitions that should converge without oscillation.
  *

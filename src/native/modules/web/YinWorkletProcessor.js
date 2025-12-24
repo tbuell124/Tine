@@ -8,7 +8,7 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
     const opts = options?.processorOptions ?? {};
     this.sampleRate = sampleRate;
     this.bufferSize = opts.bufferSize || 4096;
-    this.threshold = opts.threshold || 0.12;
+    this.threshold = opts.threshold || 0.1;
     this.halfBuffer = this.bufferSize / 2;
     this.difference = new Float32Array(this.halfBuffer);
     this.cumulativeMean = new Float32Array(this.halfBuffer);
@@ -27,7 +27,7 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
     return [];
   }
 
-  // Core YIN adapted from de Cheveigné & Kawahara (2002).
+  // Core YIN adapted from de Cheveigne & Kawahara (2002).
   yin(frame) {
     const n = frame.length;
     const half = Math.floor(n / 2);
@@ -93,12 +93,16 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
     const frame = new Float32Array(this.bufferSize);
     let rmsSum = 0;
     for (let i = 0; i < this.bufferSize; i++) {
-      const sample = channel[i];
+      let sample = channel[i];
+      if (!Number.isFinite(sample)) {
+        sample = 0;
+      }
       rmsSum += sample * sample;
+      frame[i] = sample;
     }
     const rms = Math.sqrt(rmsSum / this.bufferSize);
 
-    if (rms < 0.001) {
+    if (rms < 0.008) {
       return true;
     }
 
@@ -109,7 +113,7 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
 
     let framedRms = 0;
     for (let i = 0; i < this.bufferSize; i++) {
-      let sample = channel[i] * this.agcGain;
+      let sample = frame[i] * this.agcGain;
       // Soft limiter to prevent clipping.
       if (sample > this.limiterThreshold) {
         sample = this.limiterThreshold + (sample - this.limiterThreshold) * 0.25;
@@ -121,7 +125,7 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
       framedRms += sample * sample;
     }
     const gatedRms = Math.sqrt(framedRms / this.bufferSize);
-    if (gatedRms < 0.0015) {
+    if (gatedRms < 0.01) {
       return true;
     }
 

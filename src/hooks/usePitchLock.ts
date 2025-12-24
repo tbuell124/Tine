@@ -15,7 +15,7 @@ export interface UsePitchLockOptions {
   cents: number;
   /** MIDI number of the detected pitch. `null` indicates no reliable lock. */
   midi: number | null;
-  /** ± cents window required before we enter the locked state. */
+  /** +/- cents window required before we enter the locked state. */
   thresholdCents: number;
   /** Milliseconds the pitch must remain within the window to register a lock. */
   dwellTimeMs: number;

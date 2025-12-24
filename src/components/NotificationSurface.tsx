@@ -37,7 +37,7 @@ export const NotificationSurface: React.FC = () => {
             accessibilityLabel="Dismiss notification"
             style={styles.dismissButton}
           >
-            <Text style={styles.dismissLabel}>×</Text>
+            <Text style={styles.dismissLabel}>x</Text>
           </Pressable>
         </View>
       ))}
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
   actionButton: {
     marginTop: 6,
@@ -85,9 +85,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: '#0F172A',
-    fontWeight: '600',
     fontSize: 13,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoSemiBold',
   },
   dismissButton: {
     padding: 4,
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 24,
     paddingHorizontal: 4,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
 });
 

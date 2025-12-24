@@ -14,7 +14,7 @@ describe('YinPitchDetector', () => {
     return buffer;
   }
 
-  it('detects A4 within ±2 cents', () => {
+  it('detects A4 within +/-2 cents', () => {
     const detector = new YinPitchDetector(sampleRate, bufferSize, threshold);
     const frequency = 440;
     const samples = generateSineWave(frequency);

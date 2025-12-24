@@ -2,42 +2,35 @@ import { MicPermissionScreen } from '@components/MicPermissionScreen';
 import { usePitchDetection } from '@hooks/usePitchDetection';
 import { getMonotonicTime } from '@utils/clock';
 import { midiToNoteName } from '@utils/music';
+import {
+  findNoteBoundaryByFrequency,
+  frequencyToBoundaryCents,
+  type NoteBoundary,
+} from '@utils/noteBoundaries';
 import React from 'react';
-import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
-const HISTORY_SIZE = 7;
+const HISTORY_SIZE = 3;
 const MAX_DEVIATION = 50;
 const MIDI_START = 0;
 const MIDI_END = 127;
 const CENTER_MIDI = 64;
 const STALE_SIGNAL_MS = 900;
-const CONFIDENCE_THRESHOLD = 0.14;
-const USABLE_CONFIDENCE = 0.2;
-const NOTE_DWELL_MS = 500;
-const IN_TUNE_BOUNDARY_CENTS = 3;
-const IN_TUNE_BOUNDARY_DEG = (IN_TUNE_BOUNDARY_CENTS / 100) * 30;
+const CONFIDENCE_THRESHOLD = 0.6;
+const USABLE_CONFIDENCE = 0.7;
+const SWELL_HOLD_MS = 520;
+const NOTE_HOLD_MS = 1200;
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
-type RGB = { r: number; g: number; b: number };
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-const hex = (value: number): string => value.toString(16).padStart(2, '0');
-const mix = (from: RGB, to: RGB, t: number): string => {
-  const r = Math.round(lerp(from.r, to.r, t));
-  const g = Math.round(lerp(from.g, to.g, t));
-  const b = Math.round(lerp(from.b, to.b, t));
-  return `#${hex(r)}${hex(g)}${hex(b)}`;
-};
-const hexToRgb = (value: string): RGB | null => {
-  const match = value.match(/^#?([0-9a-f]{6})$/i);
-  if (!match) return null;
-  const intVal = parseInt(match[1], 16);
-  return {
-    r: (intVal >> 16) & 255,
-    g: (intVal >> 8) & 255,
-    b: intVal & 255,
-  };
-};
 const median = (values: number[]): number => {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -45,18 +38,8 @@ const median = (values: number[]): number => {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 };
 
-const COLOR_NEUTRAL: RGB = { r: 16, g: 122, b: 71 }; // darker green
-const COLOR_YELLOW: RGB = { r: 174, g: 133, b: 18 }; // darker yellow
-const COLOR_FAR: RGB = { r: 148, g: 36, b: 36 }; // darker red
 const NOTE_STEMS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
-
-const colorForDeviation = (cents: number): string => {
-  const distance = clamp(Math.abs(cents) / MAX_DEVIATION, 0, 1);
-  if (distance <= 0.5) {
-    return mix(COLOR_NEUTRAL, COLOR_YELLOW, distance / 0.5);
-  }
-  return mix(COLOR_YELLOW, COLOR_FAR, (distance - 0.5) / 0.5);
-};
+const HARMONIC_DIVISORS = [1, 2, 3, 4] as const;
 
 const midiFromFrequency = (frequency: number | null): number | null => {
   if (frequency === null || !Number.isFinite(frequency) || frequency <= 0) return null;
@@ -65,7 +48,7 @@ const midiFromFrequency = (frequency: number | null): number | null => {
 
 const formatNote = (midi: number | null, fallbackName: string | null): string => {
   if (midi !== null && Number.isFinite(midi)) {
-    return midiToNoteName(Math.round(midi), 'sharp').replace(/[0-9-–—]/g, '');
+    return midiToNoteName(Math.round(midi), 'sharp').replace(/[0-9-]/g, '');
   }
 
   if (fallbackName) {
@@ -74,14 +57,60 @@ const formatNote = (midi: number | null, fallbackName: string | null): string =>
       const [, letter, accidental] = match;
       if (accidental === 'b') {
         return midi !== null
-          ? midiToNoteName(Math.round(midi), 'sharp').replace(/[0-9-–—]/g, '')
-          : `${letter.toUpperCase()}b`.replace(/[-–—]/g, '');
+          ? midiToNoteName(Math.round(midi), 'sharp').replace(/[0-9-]/g, '')
+          : `${letter.toUpperCase()}b`.replace(/-/g, '');
       }
-      return `${letter.toUpperCase()}${accidental === '#' ? '#' : ''}`.replace(/[-–—]/g, '');
+      return `${letter.toUpperCase()}${accidental === '#' ? '#' : ''}`.replace(/-/g, '');
     }
   }
 
   return '';
+};
+
+const resolveBoundaryFromFrequency = (
+  frequency: number,
+  previous: NoteBoundary | null,
+): { boundary: NoteBoundary; cents: number } | null => {
+  if (!Number.isFinite(frequency) || frequency <= 0) {
+    return null;
+  }
+
+  let bestOverall: { boundary: NoteBoundary; cents: number; score: number } | null = null;
+  let bestPrevious: { boundary: NoteBoundary; cents: number; score: number } | null = null;
+
+  for (const divisor of HARMONIC_DIVISORS) {
+    const candidateFreq = frequency / divisor;
+    if (candidateFreq < 20) {
+      continue;
+    }
+    const boundary = findNoteBoundaryByFrequency(candidateFreq);
+    if (!boundary) {
+      continue;
+    }
+    const cents = frequencyToBoundaryCents(candidateFreq, boundary);
+    const score = Math.abs(cents) + (divisor - 1) * 4;
+
+    if (!bestOverall || score < bestOverall.score) {
+      bestOverall = { boundary, cents, score };
+    }
+
+    if (previous && boundary.midi === previous.midi) {
+      const prevScore = Math.abs(cents) + (divisor - 1) * 2;
+      if (!bestPrevious || prevScore < bestPrevious.score) {
+        bestPrevious = { boundary: previous, cents, score: prevScore };
+      }
+    }
+  }
+
+  if (bestPrevious && Math.abs(bestPrevious.cents) <= 55) {
+    return { boundary: bestPrevious.boundary, cents: bestPrevious.cents };
+  }
+
+  if (!bestOverall) {
+    return null;
+  }
+
+  return { boundary: bestOverall.boundary, cents: bestOverall.cents };
 };
 
 export const TunerScreen: React.FC = () => {
@@ -93,16 +122,25 @@ export const TunerScreen: React.FC = () => {
   const [smoothedCents, setSmoothedCents] = React.useState(0);
   const [displayMidi, setDisplayMidi] = React.useState<number | null>(null);
   const [derivedMidi, setDerivedMidi] = React.useState<number | null>(null);
+  const [targetBoundary, setTargetBoundary] = React.useState<NoteBoundary | null>(null);
+  const [targetCents, setTargetCents] = React.useState(0);
   const lastStableAt = React.useRef<number | null>(null);
-  const candidateMidi = React.useRef<number | null>(null);
-  const candidateStart = React.useRef<number | null>(null);
+  const stableNoteStartRef = React.useRef<number | null>(null);
   const midiHistory = React.useRef<number[]>([]);
   const centsHistory = React.useRef<number[]>([]);
   const listeningPulse = React.useRef(new Animated.Value(1)).current;
   const listeningLoop = React.useRef<Animated.CompositeAnimation | null>(null);
-  const ringRotation = React.useRef(new Animated.Value(0)).current;
-  const ringContinuousAngleRef = React.useRef(0);
-  const [smoothColor, setSmoothColor] = React.useState(COLOR_NEUTRAL);
+  const outerRotation = React.useRef(new Animated.Value(0)).current;
+  const innerCentsRotation = React.useRef(new Animated.Value(0)).current;
+  const innerRotationOffsetAnim = React.useRef(new Animated.Value(0)).current;
+  const ellipsisPhase = React.useRef(new Animated.Value(0)).current;
+  const outerContinuousAngleRef = React.useRef(0);
+  const innerRotationOffsetRef = React.useRef(0);
+  const swellOpacity = React.useRef(new Animated.Value(0)).current;
+  const swellScaleAnim = React.useRef(new Animated.Value(0.92)).current;
+  const swellNoteRef = React.useRef<number | null>(null);
+  const swellStartRef = React.useRef<number | null>(null);
+  const swellRunningRef = React.useRef(false);
 
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -113,24 +151,164 @@ export const TunerScreen: React.FC = () => {
     };
   }, []);
 
-  const deviation = clamp(pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ellipsisPhase, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ellipsisPhase, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+      ellipsisPhase.setValue(0);
+    };
+  }, [ellipsisPhase]);
+
+  const midiFloat = pitch.frequency ? midiFromFrequency(pitch.frequency) : null;
+  const targetMidi = targetBoundary?.midi ?? null;
+  const activeCents = targetBoundary !== null ? targetCents : pitch.cents;
+  const deviation = clamp(activeCents, -MAX_DEVIATION, MAX_DEVIATION);
   const signalAge = pitch.updatedAt > 0 ? Math.max(0, now - pitch.updatedAt) : Infinity;
   const hasFreshSignal = signalAge <= STALE_SIGNAL_MS;
   const hasConfidence = pitch.confidence >= CONFIDENCE_THRESHOLD;
   const hasPitch = pitch.midi !== null && pitch.noteName !== null;
   const isWeakSignal = !hasFreshSignal || !hasConfidence || !hasPitch;
+  const showSignalCandidate = hasFreshSignal && pitch.confidence >= USABLE_CONFIDENCE && hasPitch;
+  if (!showSignalCandidate) {
+    stableNoteStartRef.current = null;
+  } else {
+    stableNoteStartRef.current ??= now;
+  }
+  const showSignal =
+    showSignalCandidate &&
+    stableNoteStartRef.current !== null &&
+    now - stableNoteStartRef.current >= NOTE_HOLD_MS;
   const deviationDisplay = smoothedMidi !== null ? smoothedCents : deviation;
-  const indicatorColor = colorForDeviation(deviationDisplay);
-  const signalStrength = clamp((pitch.confidence - 0.08) / 0.7, 0, 1);
-  const displayOpacity = signalStrength <= 0.05 ? 0.08 : 0.25 + signalStrength * 0.75;
-  const swellScale = signalStrength >= 0.9 && Math.abs(deviationDisplay) <= 3 ? 1.12 : 1;
+  const signalStrength = clamp((pitch.confidence - 0.06) / 0.7, 0, 1);
+  const swellScale = 1;
   const allowMotion = signalStrength > 0.18;
-  const incomingMidi =
-    pitch.midi ?? derivedMidi ?? (pitch.frequency ? midiFromFrequency(pitch.frequency) : null);
+  const incomingMidi = targetMidi ?? midiFloat ?? pitch.midi ?? derivedMidi ?? null;
+  const roundedIncomingMidi =
+    incomingMidi !== null && Number.isFinite(incomingMidi) ? Math.round(incomingMidi) : null;
 
   React.useEffect(() => {
     setDerivedMidi(midiFromFrequency(pitch.frequency ?? null));
   }, [pitch.frequency]);
+
+  React.useEffect(() => {
+    if (!pitch.frequency || !Number.isFinite(pitch.frequency) || pitch.frequency <= 0) {
+      return;
+    }
+
+    if (!hasFreshSignal) {
+      return;
+    }
+
+    if (!showSignalCandidate) {
+      return;
+    }
+
+    const resolved = resolveBoundaryFromFrequency(pitch.frequency, targetBoundary);
+    if (!resolved) {
+      return;
+    }
+
+    const clampedCents = clamp(resolved.cents, -MAX_DEVIATION, MAX_DEVIATION);
+
+    if (!targetBoundary || resolved.boundary.midi !== targetBoundary.midi) {
+      if (!targetBoundary) {
+        innerRotationOffsetRef.current = 0;
+        innerRotationOffsetAnim.setValue(0);
+      } else {
+        innerRotationOffsetRef.current += (resolved.boundary.midi - targetBoundary.midi) * 360;
+        innerRotationOffsetAnim.setValue(innerRotationOffsetRef.current);
+      }
+      setTargetBoundary(resolved.boundary);
+    }
+    setTargetCents(clampedCents);
+  }, [hasFreshSignal, pitch.frequency, showSignalCandidate, targetBoundary]);
+
+  React.useEffect(() => {
+    const nowTime = getMonotonicTime();
+    const isInTuneWindow = Math.abs(deviationDisplay) <= 3;
+    const hasStableSignal =
+      roundedIncomingMidi !== null &&
+      signalStrength >= USABLE_CONFIDENCE &&
+      allowMotion &&
+      isInTuneWindow;
+
+    if (!hasStableSignal) {
+      swellNoteRef.current = null;
+      swellStartRef.current = null;
+      if (!swellRunningRef.current) {
+        swellOpacity.setValue(0);
+        swellScaleAnim.setValue(0.92);
+      }
+      return;
+    }
+
+    if (swellNoteRef.current !== roundedIncomingMidi) {
+      swellNoteRef.current = roundedIncomingMidi;
+      swellStartRef.current = nowTime;
+      return;
+    }
+
+    if (
+      !swellRunningRef.current &&
+      swellStartRef.current !== null &&
+      nowTime - swellStartRef.current >= SWELL_HOLD_MS
+    ) {
+      swellRunningRef.current = true;
+      swellOpacity.setValue(0);
+      swellScaleAnim.setValue(0.92);
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(swellOpacity, {
+            toValue: 0.85,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.timing(swellScaleAnim, {
+            toValue: 1.02,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(swellOpacity, {
+            toValue: 0,
+            duration: 320,
+            useNativeDriver: true,
+          }),
+          Animated.timing(swellScaleAnim, {
+            toValue: 0.95,
+            duration: 320,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => {
+        swellRunningRef.current = false;
+        swellStartRef.current = getMonotonicTime();
+      });
+    }
+  }, [
+    allowMotion,
+    deviationDisplay,
+    roundedIncomingMidi,
+    signalStrength,
+    swellOpacity,
+    swellScaleAnim,
+  ]);
 
   React.useEffect(() => {
     if (isWeakSignal || incomingMidi === null || pitch.confidence < USABLE_CONFIDENCE) {
@@ -144,12 +322,16 @@ export const TunerScreen: React.FC = () => {
         setSmoothedMidi(null);
         setSmoothedCents(0);
         setDisplayMidi(null);
+        setTargetBoundary(null);
+        setTargetCents(0);
+        innerRotationOffsetRef.current = 0;
+        innerRotationOffsetAnim.setValue(0);
       }
       return;
     }
 
     const clampedMidi = clamp(incomingMidi, MIDI_START, MIDI_END);
-    const clampedCents = clamp(pitch.cents, -MAX_DEVIATION, MAX_DEVIATION);
+    const clampedCents = clamp(activeCents, -MAX_DEVIATION, MAX_DEVIATION);
 
     midiHistory.current = [...midiHistory.current.slice(-(HISTORY_SIZE - 1)), clampedMidi];
     centsHistory.current = [...centsHistory.current.slice(-(HISTORY_SIZE - 1)), clampedCents];
@@ -157,9 +339,9 @@ export const TunerScreen: React.FC = () => {
     const medianMidi = median(midiHistory.current);
     const medianCents = median(centsHistory.current);
 
-    const alphaMidi = 0.12;
-    const alphaCents = 0.2;
-    const maxCentsStep = 6;
+    const alphaMidi = 0.3;
+    const alphaCents = 0.4;
+    const maxCentsStep = 14;
 
     setSmoothedMidi((prev) =>
       prev === null ? medianMidi : prev + (medianMidi - prev) * alphaMidi,
@@ -174,127 +356,129 @@ export const TunerScreen: React.FC = () => {
   }, [incomingMidi, isWeakSignal, now, pitch.cents, pitch.confidence]);
 
   React.useEffect(() => {
-    const targetMidi = smoothedMidi ?? incomingMidi;
-    if (targetMidi === null) {
+    if (!showSignal) {
       return;
     }
-    const rounded = Math.round(targetMidi);
-
-    if (displayMidi === null) {
-      setDisplayMidi(rounded);
-      candidateMidi.current = null;
-      candidateStart.current = null;
+    if (targetMidi !== null && Number.isFinite(targetMidi)) {
+      setDisplayMidi(Math.round(targetMidi));
       return;
     }
-
-    if (rounded === displayMidi) {
-      candidateMidi.current = null;
-      candidateStart.current = null;
+    const nextMidi = smoothedMidi ?? incomingMidi;
+    if (nextMidi === null || !Number.isFinite(nextMidi)) {
+      setDisplayMidi(null);
       return;
     }
-
-    if (candidateMidi.current !== rounded) {
-      candidateMidi.current = rounded;
-      candidateStart.current = now;
-      return;
-    }
-
-    if (candidateStart.current !== null && now - candidateStart.current >= NOTE_DWELL_MS) {
-      setDisplayMidi(rounded);
-      candidateMidi.current = null;
-      candidateStart.current = null;
-    }
-  }, [displayMidi, incomingMidi, now, smoothedMidi]);
+    setDisplayMidi(Math.round(nextMidi));
+  }, [incomingMidi, showSignal, smoothedMidi, targetMidi]);
 
   const noteLabel = React.useMemo(
     () => formatNote(displayMidi ?? smoothedMidi ?? incomingMidi ?? pitch.midi, pitch.noteName),
     [displayMidi, incomingMidi, pitch.midi, pitch.noteName, smoothedMidi],
   );
+  const ellipsisOpacity = React.useCallback(
+    (start: number) =>
+      ellipsisPhase.interpolate({
+        inputRange: [0, start, start + 0.2, start + 0.4, 1],
+        outputRange: [0.2, 0.2, 1, 0.2, 0.2],
+        extrapolate: 'clamp',
+      }),
+    [ellipsisPhase],
+  );
 
-  const ringSize = React.useMemo(() => Math.min(Math.max(width - 80, 320), 520), [width]);
+  const ringSize = React.useMemo(
+    () => (Platform.OS === 'web' ? 340 : Math.min(Math.max(width - 80, 320), 520)),
+    [width],
+  );
   const ringRadius = ringSize / 2 - 30;
-  const innerRingRadius = ringSize * 0.3;
-  const boundaryStartRadius = Math.min(ringRadius - 8, innerRingRadius + 24);
-  const boundaryLineLength = Math.max(ringRadius - boundaryStartRadius, 0);
-  const boundaryLineOffset = (boundaryStartRadius + ringRadius) / 2;
+  const innerRingRadius = ringSize * 0.26;
+  const topTickHeight = 16;
   const noteIndex = React.useMemo(() => {
-    const active = displayMidi ?? smoothedMidi ?? incomingMidi ?? CENTER_MIDI;
-    const idx = ((Math.round(active) % 12) + 12) % 12;
-    return idx;
-  }, [displayMidi, incomingMidi, smoothedMidi]);
-  const centsAngle = (clamp(deviationDisplay, -MAX_DEVIATION, MAX_DEVIATION) / 100) * 30;
-  const ringTargetAngleRaw = noteIndex * 30 + centsAngle;
+    const active = targetMidi ?? displayMidi ?? CENTER_MIDI;
+    return ((active % 12) + 12) % 12;
+  }, [displayMidi, targetMidi]);
+  const centsAngle =
+    (clamp(deviationDisplay, -MAX_DEVIATION, MAX_DEVIATION) / 50) * 180 +
+    innerRotationOffsetRef.current;
+  const outerTargetAngleRaw = -noteIndex * 30;
+  const outerCentsRotation = React.useMemo(
+    () => Animated.divide(Animated.subtract(innerRotationOffsetAnim, innerCentsRotation), 12),
+    [innerCentsRotation, innerRotationOffsetAnim],
+  );
+  const totalOuterRotation = React.useMemo(
+    () => Animated.add(outerRotation, outerCentsRotation),
+    [outerCentsRotation, outerRotation],
+  );
   const ringRotationDeg = React.useMemo(
     () =>
-      ringRotation.interpolate({
+      totalOuterRotation.interpolate({
         inputRange: [-1080, 1080],
         outputRange: ['-1080deg', '1080deg'],
       }),
-    [ringRotation],
+    [totalOuterRotation],
   );
-  const innerRingRotationDeg = React.useMemo(() => {
-    const innerRotation = Animated.multiply(ringRotation, 12);
-    return innerRotation.interpolate({
-      inputRange: [-12960, 12960],
-      outputRange: ['-12960deg', '12960deg'],
-    });
-  }, [ringRotation]);
+  const innerRingRotationDeg = React.useMemo(
+    () =>
+      Animated.add(Animated.multiply(outerRotation, -12), innerCentsRotation).interpolate({
+        inputRange: [-7200, 7200],
+        outputRange: ['-7200deg', '7200deg'],
+      }),
+    [innerCentsRotation, outerRotation],
+  );
   const tickHeight = 24;
   const tickOffset = ringRadius - tickHeight / 2;
-  const ringRotationInvDeg = React.useMemo(() => {
-    const invRotation = Animated.multiply(ringRotation, -1);
-    return invRotation.interpolate({
-      inputRange: [-1080, 1080],
-      outputRange: ['-1080deg', '1080deg'],
-    });
-  }, [ringRotation]);
-  const boundaryAngles = React.useMemo(
-    () => [-IN_TUNE_BOUNDARY_DEG, IN_TUNE_BOUNDARY_DEG],
-    [],
+  const ringRotationInv = React.useMemo(
+    () => Animated.multiply(totalOuterRotation, -1),
+    [totalOuterRotation],
+  );
+  const ringRotationInvDeg = React.useMemo(
+    () =>
+      ringRotationInv.interpolate({
+        inputRange: [-1080, 1080],
+        outputRange: ['-1080deg', '1080deg'],
+      }),
+    [ringRotationInv],
   );
   React.useEffect(() => {
+    if (!showSignal) {
+      return;
+    }
     const computeContinuousTarget = () => {
       if (!allowMotion) {
         return 0;
       }
-      const prev = ringContinuousAngleRef.current;
-      let candidate = ringTargetAngleRaw;
+      const prev = outerContinuousAngleRef.current;
+      let candidate = outerTargetAngleRaw;
       while (candidate - prev > 180) {
         candidate -= 360;
       }
       while (candidate - prev < -180) {
         candidate += 360;
       }
-      // Smooth the transition to reduce abrupt jumps.
-      const blended = prev + (candidate - prev) * 0.2;
-      // Clamp per-frame change to avoid sudden swings on noisy frames.
-      const maxStep = 25;
-      const delta = Math.max(Math.min(blended - prev, maxStep), -maxStep);
-      const next = prev + delta;
-      ringContinuousAngleRef.current = next;
-      return next;
+      outerContinuousAngleRef.current = candidate;
+      return candidate;
     };
 
     const target = computeContinuousTarget();
-    Animated.spring(ringRotation, {
+    Animated.timing(outerRotation, {
       toValue: target,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-      friction: 7,
-      tension: 50,
     }).start();
-  }, [allowMotion, ringRotation, ringTargetAngleRaw]);
+  }, [allowMotion, outerRotation, outerTargetAngleRaw, showSignal]);
 
   React.useEffect(() => {
-    const targetRgb = hexToRgb(indicatorColor);
-    if (!targetRgb) {
+    if (!showSignal) {
       return;
     }
-    setSmoothColor((prevRgb) => ({
-      r: Math.round(prevRgb.r + (targetRgb.r - prevRgb.r) * 0.18),
-      g: Math.round(prevRgb.g + (targetRgb.g - prevRgb.g) * 0.18),
-      b: Math.round(prevRgb.b + (targetRgb.b - prevRgb.b) * 0.18),
-    }));
-  }, [indicatorColor]);
+    const target = allowMotion ? centsAngle : 0;
+    Animated.timing(innerCentsRotation, {
+      toValue: target,
+      duration: 140,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [allowMotion, centsAngle, innerCentsRotation, showSignal]);
 
   React.useEffect(() => {
     if (listening && permission === 'granted') {
@@ -369,25 +553,15 @@ export const TunerScreen: React.FC = () => {
     body = (
       <View style={styles.screen}>
         <View style={[styles.ringWrapper, { width: ringSize, height: ringSize }]}>
-          {boundaryAngles.map((angle) => (
-            <View
-              key={`boundary-line-${angle}`}
-              style={[
-                styles.boundaryLineContainer,
-                { transform: [{ rotate: `${angle}deg` }] },
-              ]}
-            >
-              <View
-                style={[
-                  styles.boundaryLine,
-                  {
-                    height: boundaryLineLength,
-                    transform: [{ translateY: -boundaryLineOffset }],
-                  },
-                ]}
-              />
-            </View>
-          ))}
+          <View
+            style={[
+              styles.topTick,
+              {
+                top: ringSize / 2 - ringRadius - topTickHeight + 2,
+                height: topTickHeight,
+              },
+            ]}
+          />
           <Animated.View
             style={[
               styles.ring,
@@ -395,13 +569,12 @@ export const TunerScreen: React.FC = () => {
                 width: ringSize,
                 height: ringSize,
                 borderRadius: ringSize / 2,
-                backgroundColor: `rgba(${smoothColor.r}, ${smoothColor.g}, ${smoothColor.b}, ${displayOpacity})`,
                 transform: [{ scale: swellScale }, { rotate: ringRotationDeg }],
               },
             ]}
           >
             {NOTE_STEMS.map((stem, idx) => {
-              const angle = -idx * 30;
+              const angle = idx * 30;
               return (
                 <View
                   key={stem}
@@ -436,43 +609,63 @@ export const TunerScreen: React.FC = () => {
             style={[
               styles.innerRing,
               {
-                width: ringSize * 0.6,
-                height: ringSize * 0.6,
-                borderRadius: (ringSize * 0.6) / 2,
-                backgroundColor: `rgba(${smoothColor.r}, ${smoothColor.g}, ${smoothColor.b}, ${displayOpacity})`,
+                width: ringSize * 0.52,
+                height: ringSize * 0.52,
+                borderRadius: (ringSize * 0.52) / 2,
                 transform: [{ scale: swellScale }, { rotate: innerRingRotationDeg }],
               },
             ]}
           >
-            <View
-              style={[
-                styles.innerTickWrap,
-                {
-                  transform: [{ rotate: '0deg' }, { translateY: -(ringSize * 0.3) }],
-                },
-              ]}
-            >
-              <View style={[styles.innerTick, { height: 28, width: 5 }]} />
-            </View>
-            {[-IN_TUNE_BOUNDARY_DEG, IN_TUNE_BOUNDARY_DEG].map((angle) => (
+            {showSignal ? (
               <View
-                key={`boundary-${angle}`}
                 style={[
                   styles.innerTickWrap,
                   {
-                    transform: [
-                      { rotate: `${angle}deg` },
-                      { translateY: -(ringSize * 0.3) },
-                    ],
+                    transform: [{ rotate: '0deg' }, { translateY: -innerRingRadius }],
                   },
                 ]}
               >
-                <View style={styles.boundaryTick} />
+                <View style={[styles.innerTick, { height: 28, width: 5 }]} />
               </View>
-            ))}
+            ) : null}
           </Animated.View>
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.swellOverlay,
+              {
+                width: ringSize,
+                height: ringSize,
+                borderRadius: ringSize / 2,
+                opacity: swellOpacity,
+                transform: [{ scale: swellScaleAnim }],
+              },
+            ]}
+          />
           <View style={styles.centerOverlay}>
-            <Text style={[styles.centerNote, { color: '#e2e8f0' }]}>{noteLabel}</Text>
+            {showSignal ? (
+              <Text style={[styles.centerNote, { color: '#e2e8f0' }]} testID="center-note">
+                {noteLabel}
+              </Text>
+            ) : (
+              <View style={styles.ellipsisRow} testID="center-note">
+                <Animated.Text
+                  style={[styles.centerNote, { color: '#e2e8f0', opacity: ellipsisOpacity(0) }]}
+                >
+                  .
+                </Animated.Text>
+                <Animated.Text
+                  style={[styles.centerNote, { color: '#e2e8f0', opacity: ellipsisOpacity(0.2) }]}
+                >
+                  .
+                </Animated.Text>
+                <Animated.Text
+                  style={[styles.centerNote, { color: '#e2e8f0', opacity: ellipsisOpacity(0.4) }]}
+                >
+                  .
+                </Animated.Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -489,7 +682,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#050814',
+    backgroundColor: '#0b1a14',
     gap: 28,
     paddingHorizontal: 16,
     paddingVertical: 24,
@@ -512,31 +705,47 @@ const styles = StyleSheet.create({
   ring: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    borderWidth: 1,
-    borderColor: '#111827',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
     overflow: 'visible',
+    shadowColor: '#e2e8f0',
+    shadowOpacity: 0.6,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
-  boundaryLineContainer: {
+  topTick: {
     position: 'absolute',
     left: '50%',
-    top: '50%',
-    width: 0,
-    height: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
-  },
-  boundaryLine: {
     width: 2,
-    backgroundColor: '#ffffff',
-    borderRadius: 1,
     marginLeft: -1,
+    backgroundColor: '#e2e8f0',
+    pointerEvents: 'none',
+    shadowColor: '#e2e8f0',
+    shadowOpacity: 0.75,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   innerRing: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.7)',
+    shadowColor: '#e2e8f0',
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
+  swellOverlay: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    backgroundColor: 'rgba(226, 232, 240, 0.18)',
   },
   notePillWrap: {
     position: 'absolute',
@@ -552,12 +761,19 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 2,
     marginBottom: 10,
+    shadowColor: '#e2e8f0',
+    shadowOpacity: 0.55,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   noteText: {
     fontSize: 17,
-    fontWeight: '800',
     letterSpacing: 1.2,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
+    textShadowColor: 'rgba(226, 232, 240, 0.7)',
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 0 },
   },
   ringPointer: {
     display: 'none',
@@ -581,10 +797,18 @@ const styles = StyleSheet.create({
   },
   centerNote: {
     fontSize: 42,
-    fontWeight: '900',
     letterSpacing: 4,
     color: '#e2e8f0',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
+    textShadowColor: 'rgba(226, 232, 240, 0.85)',
+    textShadowRadius: 14,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  ellipsisRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   innerTickWrap: {
     position: 'absolute',
@@ -596,20 +820,18 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 2,
     backgroundColor: '#e2e8f0',
-  },
-  boundaryTick: {
-    width: 3,
-    height: 14,
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
+    shadowColor: '#e2e8f0',
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   lockLabel: {
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: '#22c55e',
-    fontWeight: '700',
+    color: '#e2e8f0',
     fontSize: 14,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBold',
   },
   unavailableContainer: {
     flex: 1,
@@ -621,15 +843,14 @@ const styles = StyleSheet.create({
   },
   unavailableTitle: {
     fontSize: 22,
-    fontWeight: '800',
     color: '#e2e8f0',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
   },
   unavailableMessage: {
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
     color: '#cbd5e1',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
 });

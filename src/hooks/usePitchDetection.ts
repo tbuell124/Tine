@@ -4,8 +4,8 @@ import {
   type PitchEvent,
 } from '@native/modules/specs/PitchDetectorNativeModule';
 import { getMonotonicTime } from '@utils/clock';
-import { centsBetweenFrequencies, midiToNoteName } from '@utils/music';
-import { Audio } from 'expo-av';
+import { centsBetweenFrequencies, closestNoteToFrequency, midiToNoteName } from '@utils/music';
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import React from 'react';
 import { AppState, type AppStateStatus, Linking, PermissionsAndroid, Platform } from 'react-native';
 
@@ -67,10 +67,10 @@ export function usePitchDetection(): PitchDetectionStatus {
   const anchorFreqRef = React.useRef<number | null>(null);
   const anchorStartedAtRef = React.useRef<number | null>(null);
   const freqMedianRef = React.useRef<number[]>([]);
-  const MIN_UI_INTERVAL_MS = 25;
-  const MIN_FREQ = 70;
-  const MAX_FREQ = 1400;
-  const ANCHOR_WINDOW_MS = 350;
+  const MIN_UI_INTERVAL_MS = 16;
+  const MIN_FREQ = 20;
+  const MAX_FREQ = 20000;
+  const ANCHOR_WINDOW_MS = 120;
   const ANCHOR_MAX_DRIFT_CENTS = 80;
 
   const openSettings = React.useCallback(async () => {
@@ -188,15 +188,16 @@ export function usePitchDetection(): PitchDetectionStatus {
       return;
     }
 
+    const derivedFrequency = Number.isFinite(medianFreq) && medianFreq > 0 ? medianFreq : null;
+    const derivedNote = derivedFrequency ? closestNoteToFrequency(derivedFrequency) : null;
     const fallbackNoteName = Number.isFinite(event.midi)
       ? midiToNoteName(Math.round(event.midi))
       : null;
-    const derivedFrequency = Number.isFinite(medianFreq) && medianFreq > 0 ? medianFreq : null;
 
     setPitch({
-      midi: Number.isFinite(event.midi) ? event.midi : null,
-      cents: Number.isFinite(event.cents) ? event.cents : 0,
-      noteName: event.noteName ?? fallbackNoteName,
+      midi: derivedNote ? derivedNote.midi : Number.isFinite(event.midi) ? event.midi : null,
+      cents: derivedNote ? derivedNote.cents : Number.isFinite(event.cents) ? event.cents : 0,
+      noteName: derivedNote ? derivedNote.noteName : (event.noteName ?? fallbackNoteName),
       frequency: derivedFrequency,
       confidence: smoothedConfidence,
       updatedAt,
@@ -210,10 +211,12 @@ export function usePitchDetection(): PitchDetectionStatus {
 
     const preferredEstimator: PitchDetector.StartOptions['estimator'] = 'yin';
     const preferredSampleRate = Platform.OS === 'android' ? 48000 : 44100;
+    const preferredBufferSize = 4096;
+    const preferredThreshold = Platform.OS === 'web' ? 0.1 : 0.08;
     try {
       await PitchDetector.start({
-        threshold: 0.08,
-        bufferSize: 4096,
+        threshold: preferredThreshold,
+        bufferSize: preferredBufferSize,
         sampleRate: preferredSampleRate,
         estimator: preferredEstimator,
       });
@@ -230,7 +233,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   const requestPermission = React.useCallback(async () => {
     if (Platform.OS === 'ios') {
       try {
-        const { status, granted } = await Audio.requestPermissionsAsync();
+        const { status, granted } = await requestRecordingPermissionsAsync();
         const isGranted = status === 'granted' || granted;
         setPermission(isGranted ? 'granted' : 'denied');
         return isGranted;
@@ -296,7 +299,7 @@ export function usePitchDetection(): PitchDetectionStatus {
 
       try {
         if (Platform.OS === 'ios') {
-          const { status, granted } = await Audio.getPermissionsAsync();
+          const { status, granted } = await getRecordingPermissionsAsync();
           if (status === 'granted' || granted) {
             setPermission('granted');
             return;

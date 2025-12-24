@@ -79,7 +79,6 @@ let webStream: MediaStream | null = null;
 const webListeners = new Set<Listener>();
 const webSmoother = new PitchSmoother(15, 0.15);
 let webThreshold = 0.12;
-let webNeuralReady = false;
 
 const toPitchEvent = (
   frequency: number | null,
@@ -135,7 +134,6 @@ export async function start(options: StartOptions = {}): Promise<StartResult> {
   const preferredSampleRate = options.sampleRate ?? 44100;
   const estimatorRequested = options.estimator ?? 'yin';
   const estimator = estimatorRequested === 'neural-hybrid' ? 'yin' : estimatorRequested;
-  webNeuralReady = false;
 
   try {
     webCtx = new AudioContext({ sampleRate: preferredSampleRate });
@@ -147,14 +145,6 @@ export async function start(options: StartOptions = {}): Promise<StartResult> {
 
   try {
     await webCtx.audioWorklet.addModule(WEB_WORKLET_URL);
-    if (estimatorRequested === 'neural-hybrid') {
-      try {
-        const { neuralHybridEstimator } = await import('./web/NeuralHybridEstimator');
-        webNeuralReady = await neuralHybridEstimator.load(options.neuralModelUrl);
-      } catch (error) {
-        console.warn('Neural hybrid estimator unavailable on web', error);
-      }
-    }
     webStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
@@ -198,7 +188,7 @@ export async function start(options: StartOptions = {}): Promise<StartResult> {
     bufferSize,
     threshold: webThreshold,
     estimator: estimatorRequested,
-    neuralReady: webNeuralReady,
+    neuralReady: false,
   };
 }
 

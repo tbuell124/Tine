@@ -81,10 +81,9 @@ const styles = StyleSheet.create({
   heading: {
     color: '#e2e8f0',
     fontSize: 12,
-    fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.3,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoSemiBold',
   },
   scroller: {
     maxHeight: 140,
@@ -99,26 +98,25 @@ const styles = StyleSheet.create({
   },
   level: {
     fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBold',
   },
   tag: {
     color: '#bae6fd',
     fontSize: 11,
     minWidth: 70,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
   time: {
     color: '#94a3b8',
     fontSize: 10,
     minWidth: 70,
     textAlign: 'right',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
   message: {
     color: '#cbd5e1',
     fontSize: 11,
     flex: 1,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
 });

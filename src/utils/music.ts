@@ -8,7 +8,7 @@ export const NOTE_STEP_DEG = 30;
 /** Number of degrees the dial should rotate per cent of detuning. */
 export const DEG_PER_CENT = 3;
 
-/** Maximum absolute cents we expect to visualise (±50¢ → ±150°). */
+/** Maximum absolute cents we expect to visualise (+/-50 cents -> +/-150 deg). */
 export const MAX_DISPLAY_CENTS = 50;
 
 /** Maximum rotation from the neutral position in degrees. */

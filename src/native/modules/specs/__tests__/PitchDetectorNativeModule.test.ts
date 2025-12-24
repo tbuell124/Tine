@@ -25,7 +25,7 @@ describe('PitchDetector native module resolution', () => {
       TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) },
     }));
 
-    const module = await import('../PitchDetectorNativeModule');
+    const module = require('../PitchDetectorNativeModule');
     const { default: spec, LINKING_ERROR, isPitchDetectorModuleAvailable } = module;
 
     expect(isPitchDetectorModuleAvailable).toBe(false);
@@ -61,7 +61,7 @@ describe('PitchDetector native module resolution', () => {
       TurboModuleRegistry: { getEnforcing: jest.fn(() => undefined) },
     }));
 
-    const module = await import('../PitchDetectorNativeModule');
+    const module = require('../PitchDetectorNativeModule');
     const { default: spec, isPitchDetectorModuleAvailable } = module;
 
     expect(isPitchDetectorModuleAvailable).toBe(true);

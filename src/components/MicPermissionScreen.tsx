@@ -86,21 +86,20 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     fontSize: 32,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
   },
   title: {
     color: '#e2e8f0',
     fontSize: 24,
-    fontWeight: '800',
     textAlign: 'center',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
   },
   message: {
     color: '#94a3b8',
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoRegular',
   },
   primaryButton: {
     width: '100%',
@@ -123,15 +122,13 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: '#0f172a',
     fontSize: 16,
-    fontWeight: '800',
-    fontFamily: 'Lato',
+    fontFamily: 'LatoBlack',
   },
   secondaryLabel: {
     color: '#a5b4fc',
     fontSize: 14,
-    fontWeight: '600',
     marginTop: 6,
-    fontFamily: 'Lato',
+    fontFamily: 'LatoSemiBold',
   },
 });
 

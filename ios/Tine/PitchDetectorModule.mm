@@ -87,10 +87,14 @@ RCT_REMAP_METHOD(start,
     double preferredSampleRate = kPreferredSampleRate;
     NSNumber *bufferSizeValue = options[@"bufferSize"];
     NSNumber *thresholdValue = options[@"threshold"];
+    NSNumber *sampleRateValue = options[@"sampleRate"];
 
     self->_bufferSize = bufferSizeValue != nil ? MAX(256, bufferSizeValue.unsignedIntegerValue)
                                                : kDefaultBufferSize;
     self->_threshold = thresholdValue != nil ? thresholdValue.doubleValue : kDefaultThreshold;
+    if (sampleRateValue != nil && sampleRateValue.doubleValue > 0) {
+      preferredSampleRate = MIN(MAX(sampleRateValue.doubleValue, 8000.0), 48000.0);
+    }
 
     if (![session setCategory:AVAudioSessionCategoryPlayAndRecord
                  withOptions:AVAudioSessionCategoryOptionAllowBluetooth |

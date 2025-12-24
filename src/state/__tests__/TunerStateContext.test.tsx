@@ -3,6 +3,7 @@ import { render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
 
+import { NotificationProvider } from '../NotificationContext';
 import { TunerProvider, useTuner, __testing } from '../TunerStateContext';
 
 describe('tunerReducer', () => {
@@ -64,9 +65,11 @@ describe('TunerProvider persistence', () => {
     };
 
     render(
-      <TunerProvider>
-        <PersistTester />
-      </TunerProvider>,
+      <NotificationProvider>
+        <TunerProvider>
+          <PersistTester />
+        </TunerProvider>
+      </NotificationProvider>,
     );
 
     await waitFor(() => {

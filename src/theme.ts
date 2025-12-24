@@ -1,8 +1,8 @@
 export const tuningTheme = {
   tuningStates: {
-    far: '#ef4444', // Red for ≥15¢ deviation
-    approaching: '#f59e0b', // Amber for 5–15¢ deviation
-    near: '#84cc16', // Yellow-green for ≤5¢ deviation
+    far: '#ef4444', // Red for >=15 cents deviation
+    approaching: '#f59e0b', // Amber for 5-15 cents deviation
+    near: '#84cc16', // Yellow-green for <=5 cents deviation
     locked: {
       base: '#059669', // Emerald core when locked
       light: '#34d399',

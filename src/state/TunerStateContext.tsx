@@ -76,7 +76,7 @@ export interface PitchState {
 export interface AngleState {
   /** Outer wheel rotation in degrees representing coarse pitch class alignment. */
   outer: number;
-  /** Target inner wheel rotation in degrees representing ±50¢ detuning. */
+  /** Target inner wheel rotation in degrees representing +/-50 cents detuning. */
   inner: number;
 }
 
@@ -181,11 +181,11 @@ const findPresetByRange = (range: SensitivityRange | undefined) =>
 const describeSignalPhase = (phase: SignalPhase): string => {
   switch (phase) {
     case 'listening':
-      return '[signal] Listening… awaiting reliable input';
+      return '[signal] Listening... awaiting reliable input';
     case 'stabilizing':
-      return '[signal] Stabilizing… refining noisy input';
+      return '[signal] Stabilizing... refining noisy input';
     case 'dropout':
-      return '[signal] Dropout detected – freezing display';
+      return '[signal] Dropout detected - freezing display';
     case 'tracking':
     default:
       return '[signal] Tracking pitch with stable lock';
@@ -507,7 +507,7 @@ export const TunerProvider: React.FC<TunerProviderProps> = ({ children }) => {
       } catch (error) {
         logger.warn('settings', 'Failed to persist tuner settings', { error });
         showNotification({
-          message: 'Saving settings failed. Your changes may not persist—please try again.',
+          message: 'Saving settings failed. Your changes may not persist-please try again.',
         });
       }
     };

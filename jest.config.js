@@ -8,7 +8,7 @@ module.exports = {
   roots: ['<rootDir>/src'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   transformIgnorePatterns: [
-    'node_modules/(?!(?:@react-native|react-native|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage|@react-native-community|expo(nent)?|@expo|expo-modules|@expo/vector-icons|@shopify/react-native-skia)/)',
+    'node_modules/(?!(?:@react-native|react-native|react-native-reanimated|react-native-gesture-handler|@react-native-async-storage|@react-native-community|expo(nent)?|@expo|expo-audio|expo-modules|expo-modules-core|@expo/vector-icons|@shopify/react-native-skia)/)',
   ],
   moduleNameMapper: {
     '^@components/(.*)$': '<rootDir>/src/components/$1',

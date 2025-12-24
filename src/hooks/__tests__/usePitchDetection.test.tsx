@@ -11,38 +11,26 @@ type PermissionState = {
   canAskAgain: boolean;
 };
 
-jest.mock('expo-av', () => {
+jest.mock('expo-audio', () => {
   const permissionState = {
     status: 'granted',
     granted: true,
     canAskAgain: true,
   };
 
-  const listener = jest.fn((_handler) => ({ remove: jest.fn() }));
-
-  const getPermissionsAsync = jest.fn(() => Promise.resolve({ ...permissionState }));
-  const requestPermissionsAsync = jest.fn(() => Promise.resolve({ ...permissionState }));
+  const getRecordingPermissionsAsync = jest.fn(() => Promise.resolve({ ...permissionState }));
+  const requestRecordingPermissionsAsync = jest.fn(() => Promise.resolve({ ...permissionState }));
 
   return {
-    Audio: {
-      getPermissionsAsync,
-      requestPermissionsAsync,
-      setAudioModeAsync: jest.fn(() => Promise.resolve()),
-      INTERRUPTION_MODE_IOS_DO_NOT_MIX: 'do_not_mix_ios',
-      INTERRUPTION_MODE_ANDROID_DO_NOT_MIX: 'do_not_mix_android',
-      addAudioInterruptionListener: listener,
-      setAudioSessionInterruptionListener: listener,
-      addAudioRouteChangeListener: listener,
-      addAudioRoutesChangeListener: listener,
-      addAudioDeviceChangeListener: listener,
-    },
+    getRecordingPermissionsAsync,
+    requestRecordingPermissionsAsync,
     __setPermissionState: (next: PermissionState) => {
       permissionState.status = next.status;
       permissionState.granted = next.granted;
       permissionState.canAskAgain = next.canAskAgain;
     },
-    __getPermissionsMock: getPermissionsAsync,
-    __requestPermissionsMock: requestPermissionsAsync,
+    __getPermissionsMock: getRecordingPermissionsAsync,
+    __requestPermissionsMock: requestRecordingPermissionsAsync,
   };
 });
 
@@ -75,7 +63,7 @@ describe('usePitchDetection integration', () => {
     jest.clearAllMocks();
     pitchListeners.splice(0, pitchListeners.length);
     const { __setPermissionState, __getPermissionsMock, __requestPermissionsMock } =
-      jest.requireMock('expo-av');
+      jest.requireMock('expo-audio');
 
     __setPermissionState({ status: 'granted', granted: true, canAskAgain: true });
     __getPermissionsMock.mockClear();
@@ -86,7 +74,7 @@ describe('usePitchDetection integration', () => {
   });
 
   it('surfaces the permission screen when microphone access is denied', async () => {
-    const { __setPermissionState } = jest.requireMock('expo-av');
+    const { __setPermissionState } = jest.requireMock('expo-audio');
     __setPermissionState({ status: 'denied', granted: false, canAskAgain: false });
 
     const { findByText } = render(<TunerScreen />);
@@ -96,7 +84,7 @@ describe('usePitchDetection integration', () => {
   });
 
   it('explains the need for microphone access before requesting permission', async () => {
-    const { __setPermissionState, __requestPermissionsMock } = jest.requireMock('expo-av');
+    const { __setPermissionState, __requestPermissionsMock } = jest.requireMock('expo-audio');
 
     __setPermissionState({ status: 'undetermined', granted: false, canAskAgain: true });
 
@@ -117,7 +105,7 @@ describe('usePitchDetection integration', () => {
 
   it('starts the detector when permission is granted', async () => {
     const detector = jest.requireMock('@native/modules/PitchDetector');
-    const { __getPermissionsMock } = jest.requireMock('expo-av');
+    const { __getPermissionsMock } = jest.requireMock('expo-audio');
 
     const { queryByText } = render(<TunerScreen />);
 
@@ -129,29 +117,52 @@ describe('usePitchDetection integration', () => {
   });
 
   it('updates the tuner display in response to pitch events', async () => {
-    render(<TunerScreen />);
+    jest.useFakeTimers();
+    const perfNow =
+      globalThis.performance && typeof globalThis.performance.now === 'function'
+        ? jest.spyOn(globalThis.performance, 'now').mockImplementation(() => Date.now())
+        : null;
+    try {
+      render(<TunerScreen />);
 
-    await waitFor(() => {
+      await act(async () => {
+        await Promise.resolve();
+      });
+
       expect(pitchListeners.length).toBeGreaterThan(0);
-    });
 
-    const payload: PitchEvent = {
-      isValid: true,
-      probability: 0.92,
-      midi: 64,
-      cents: 2,
-      noteName: 'E4',
-      frequency: 329.63,
-      timestamp: 1000,
-    };
+      const payload: PitchEvent = {
+        isValid: true,
+        probability: 0.92,
+        midi: 64,
+        cents: 2,
+        noteName: 'E4',
+        frequency: 329.63,
+      };
 
-    await act(async () => {
-      pitchListeners[0](payload);
-      pitchListeners[0]({ ...payload, timestamp: 1300 });
-    });
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          pitchListeners[0]({ ...payload, probability: 1 });
+          jest.advanceTimersByTime(20);
+        });
+      }
 
-    await waitFor(() => {
-      expect(screen.getByText('E')).toBeOnTheScreen();
-    });
+      for (let i = 0; i < 4; i += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(300);
+          pitchListeners[0]({ ...payload, probability: 1 });
+          jest.advanceTimersByTime(20);
+        });
+      }
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId('center-note')).toHaveTextContent('E');
+    } finally {
+      perfNow?.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });

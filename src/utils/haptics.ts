@@ -42,7 +42,7 @@ async function isHapticsSupported(): Promise<boolean> {
 }
 
 /**
- * Triggers a light impact for the 5¢ detent ticks. Maps to
+ * Triggers a light impact for the 5 cents detent ticks. Maps to
  * `UIImpactFeedbackGenerator` with the light style on iOS and a subtle
  * `VibrationEffect` pulse on Android.
  */
@@ -68,7 +68,7 @@ export async function triggerSuccessLock(): Promise<void> {
 }
 
 /**
- * Emits a short rumble when the tuner drifts more than ±30¢. Uses a heavy
+ * Emits a short rumble when the tuner drifts more than +/-30 cents. Uses a heavy
  * impact on iOS (Taptic Engine) and a strong `VibrationEffect` on Android.
  * Repeated calls are throttled to avoid overwhelming the player.
  */
@@ -97,7 +97,7 @@ export async function maybeTriggerOutOfTuneRumble(centsOffset: number): Promise<
 }
 
 /**
- * Utility to reset throttling state — primarily useful in tests.
+ * Utility to reset throttling state - primarily useful in tests.
  */
 export function resetHapticsThrottle(): void {
   lastRumbleTimestamp = 0;

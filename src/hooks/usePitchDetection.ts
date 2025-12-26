@@ -17,6 +17,7 @@ export interface PitchState {
   noteName: string | null;
   frequency: number | null;
   confidence: number;
+  levelDb: number | null;
   updatedAt: number;
 }
 
@@ -35,6 +36,7 @@ const DEFAULT_PITCH: PitchState = {
   noteName: null,
   frequency: null,
   confidence: 0,
+  levelDb: null,
   updatedAt: 0,
 };
 
@@ -72,6 +74,8 @@ export function usePitchDetection(): PitchDetectionStatus {
   const MAX_FREQ = 20000;
   const ANCHOR_WINDOW_MS = 120;
   const ANCHOR_MAX_DRIFT_CENTS = 80;
+  const STALE_PITCH_MS = 2000;
+  const NO_SIGNAL_LEVEL_DB = -120;
 
   const openSettings = React.useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -117,11 +121,8 @@ export function usePitchDetection(): PitchDetectionStatus {
       freqMedianRef.current = [];
       setPitch((current) => ({
         ...current,
-        midi: null,
-        cents: 0,
-        noteName: null,
-        frequency: null,
         confidence: 0,
+        levelDb: Number.isFinite(event.levelDb) ? event.levelDb ?? null : null,
         updatedAt,
       }));
       return;
@@ -136,6 +137,17 @@ export function usePitchDetection(): PitchDetectionStatus {
     // Reject frames with weak periodicity or out-of-range frequency (guitar-optimised window).
     const hasFrequency = Number.isFinite(event.frequency) && event.frequency > 0;
     if (!hasFrequency || (event.frequency ?? 0) < MIN_FREQ || (event.frequency ?? 0) > MAX_FREQ) {
+      smoothedConfidenceRef.current = 0;
+      setPitch((current) => ({
+        ...current,
+        midi: null,
+        cents: 0,
+        noteName: null,
+        frequency: null,
+        confidence: 0,
+        levelDb: Number.isFinite(event.levelDb) ? event.levelDb ?? null : null,
+        updatedAt,
+      }));
       return;
     }
 
@@ -175,7 +187,7 @@ export function usePitchDetection(): PitchDetectionStatus {
     lastUiDispatchRef.current = updatedAt;
 
     // Gate extremely low confidence to reduce jitter.
-    if (smoothedConfidence < 0.05) {
+    if (smoothedConfidence < 0.005) {
       setPitch((current) => ({
         ...current,
         midi: null,
@@ -183,6 +195,7 @@ export function usePitchDetection(): PitchDetectionStatus {
         noteName: null,
         frequency: null,
         confidence: smoothedConfidence,
+        levelDb: Number.isFinite(event.levelDb) ? event.levelDb ?? null : null,
         updatedAt,
       }));
       return;
@@ -200,9 +213,42 @@ export function usePitchDetection(): PitchDetectionStatus {
       noteName: derivedNote ? derivedNote.noteName : (event.noteName ?? fallbackNoteName),
       frequency: derivedFrequency,
       confidence: smoothedConfidence,
+      levelDb: Number.isFinite(event.levelDb) ? event.levelDb ?? null : null,
       updatedAt,
     });
   }, []);
+
+  React.useEffect(() => {
+    if (!listening) {
+      return undefined;
+    }
+    const interval = setInterval(() => {
+      const now = getMonotonicTime();
+      if (pitch.updatedAt <= 0 || now - pitch.updatedAt <= STALE_PITCH_MS) {
+        return;
+      }
+      if (pitch.confidence === 0 && pitch.frequency === null && pitch.noteName === null) {
+        return;
+      }
+      smoothedConfidenceRef.current = 0;
+      anchorFreqRef.current = null;
+      anchorStartedAtRef.current = null;
+      freqMedianRef.current = [];
+      setPitch((current) => ({
+        ...current,
+        midi: null,
+        cents: 0,
+        noteName: null,
+        frequency: null,
+        confidence: 0,
+        levelDb: NO_SIGNAL_LEVEL_DB,
+        updatedAt: now,
+      }));
+    }, 200);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [listening, pitch.confidence, pitch.frequency, pitch.noteName, pitch.updatedAt]);
 
   const startDetector = React.useCallback(async () => {
     if (!availability || permission !== 'granted' || detectorRunningRef.current) {
@@ -371,7 +417,7 @@ export function usePitchDetection(): PitchDetectionStatus {
   }, [permission]);
 
   React.useEffect(() => {
-    if (!availability) {
+    if (!availability || Platform.OS === 'web') {
       return undefined;
     }
 

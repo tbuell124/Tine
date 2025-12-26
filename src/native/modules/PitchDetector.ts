@@ -8,7 +8,7 @@ import PitchDetectorModule, {
   type StartOptions,
   type StartResult,
 } from './specs/PitchDetectorNativeModule';
-import { WEB_WORKLET_URL } from './web/workletUrl';
+import { getWebWorkletDataUrl, getWebWorkletUrl } from './web/workletUrl';
 
 const nativeModuleForEvents = (() => {
   if (Platform.OS === 'web') {
@@ -144,7 +144,11 @@ export async function start(options: StartOptions = {}): Promise<StartResult> {
   gain.gain.value = 0;
 
   try {
-    await webCtx.audioWorklet.addModule(WEB_WORKLET_URL);
+    try {
+      await webCtx.audioWorklet.addModule(getWebWorkletUrl());
+    } catch {
+      await webCtx.audioWorklet.addModule(getWebWorkletDataUrl());
+    }
     webStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,

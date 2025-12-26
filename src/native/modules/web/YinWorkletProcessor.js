@@ -13,6 +13,9 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
     this.difference = new Float32Array(this.halfBuffer);
     this.cumulativeMean = new Float32Array(this.halfBuffer);
     this.window = new Float32Array(this.bufferSize);
+    this.buffer = new Float32Array(this.bufferSize);
+    this.frame = new Float32Array(this.bufferSize);
+    this.writeIndex = 0;
     for (let i = 0; i < this.bufferSize; i++) {
       // Hann window for leakage reduction.
       this.window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (this.bufferSize - 1)));
@@ -80,31 +83,18 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
     return { frequency: freq, probability: prob };
   }
 
-  process(inputs) {
-    const input = inputs[0];
-    if (!input || input.length === 0) {
-      return true;
-    }
-    const channel = input[0];
-    if (channel.length < this.bufferSize) {
-      return true;
-    }
-
-    const frame = new Float32Array(this.bufferSize);
+  processFrame(source) {
     let rmsSum = 0;
     for (let i = 0; i < this.bufferSize; i++) {
-      let sample = channel[i];
+      let sample = source[i];
       if (!Number.isFinite(sample)) {
         sample = 0;
       }
       rmsSum += sample * sample;
-      frame[i] = sample;
+      this.frame[i] = sample;
     }
     const rms = Math.sqrt(rmsSum / this.bufferSize);
-
-    if (rms < 0.008) {
-      return true;
-    }
+    const levelDb = rms > 0 ? 20 * Math.log10(rms) : -120;
 
     // Simple AGC: adjust gain towards target RMS.
     const currentGain = this.agcGain;
@@ -113,7 +103,7 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
 
     let framedRms = 0;
     for (let i = 0; i < this.bufferSize; i++) {
-      let sample = frame[i] * this.agcGain;
+      let sample = this.frame[i] * this.agcGain;
       // Soft limiter to prevent clipping.
       if (sample > this.limiterThreshold) {
         sample = this.limiterThreshold + (sample - this.limiterThreshold) * 0.25;
@@ -121,21 +111,36 @@ class YinWorkletProcessor extends AudioWorkletProcessor {
         sample = -this.limiterThreshold + (sample + this.limiterThreshold) * 0.25;
       }
       sample *= this.window[i];
-      frame[i] = sample;
+      this.frame[i] = sample;
       framedRms += sample * sample;
     }
     const gatedRms = Math.sqrt(framedRms / this.bufferSize);
-    if (gatedRms < 0.01) {
+    const { frequency, probability } = this.yin(this.frame);
+    this.port.postMessage({
+      frequency: Number.isFinite(frequency) ? frequency : 0,
+      probability: Number.isFinite(frequency) && frequency > 0 ? probability : 0,
+      levelDb,
+      timestamp: currentTime * 1000,
+    });
+  }
+
+  process(inputs) {
+    const input = inputs[0];
+    if (!input || input.length === 0) {
+      return true;
+    }
+    const channel = input[0];
+    if (!channel || channel.length === 0) {
       return true;
     }
 
-    const { frequency, probability } = this.yin(frame);
-    if (Number.isFinite(frequency) && frequency > 0) {
-      this.port.postMessage({
-        frequency,
-        probability,
-        timestamp: currentTime * 1000,
-      });
+    for (let i = 0; i < channel.length; i++) {
+      this.buffer[this.writeIndex] = channel[i];
+      this.writeIndex += 1;
+      if (this.writeIndex >= this.bufferSize) {
+        this.processFrame(this.buffer);
+        this.writeIndex = 0;
+      }
     }
 
     return true;

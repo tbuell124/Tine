@@ -7,7 +7,7 @@ import {
 } from '@expo-google-fonts/lato';
 import { useFonts } from 'expo-font';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App(): JSX.Element {
@@ -18,11 +18,9 @@ export default function App(): JSX.Element {
     LatoBlack: Lato_900Black,
   });
 
-  const webFrameStyle = Platform.OS === 'web' ? styles.webFrame : undefined;
-
   return (
     <GestureHandlerRootView style={styles.root}>
-      <View style={[styles.container, webFrameStyle]}>
+      <View style={styles.container}>
         <TunerScreen />
       </View>
     </GestureHandlerRootView>
@@ -32,16 +30,12 @@ export default function App(): JSX.Element {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0b1a14',
+    backgroundColor: '#050607',
     alignItems: 'center',
     justifyContent: 'center',
   },
   container: {
     flex: 1,
-    backgroundColor: '#0b1a14',
-  },
-  webFrame: {
-    width: 390,
-    height: 844,
+    backgroundColor: '#050607',
   },
 });

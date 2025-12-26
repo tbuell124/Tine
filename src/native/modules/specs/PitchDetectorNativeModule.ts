@@ -15,7 +15,7 @@ export interface Spec extends TurboModule {
   setThreshold(threshold: number): void;
 }
 
-export const LINKING_ERROR =
+export let LINKING_ERROR =
   `The native module "PitchDetector" is not properly linked. Make sure you have run pod install` +
   (Platform.OS === 'ios' ? ' and rebuilt the iOS project.' : '.') +
   ' If you are using Expo Go this module will not be available. Build a custom dev client to load the detector.';
@@ -37,9 +37,27 @@ moduleImpl ??= (NativeModules.PitchDetector as Spec | null) ?? null;
 const shouldLogWarnings =
   typeof process === 'undefined' ? true : process.env.NODE_ENV !== 'production';
 
+let webFallback: {
+  LINKING_ERROR: string;
+  isPitchDetectorModuleAvailable: boolean;
+  default: Spec;
+} | null = null;
+
+if (Platform.OS === 'web') {
+  try {
+    webFallback = require('./PitchDetectorNativeModule.web');
+  } catch {
+    webFallback = null;
+  }
+}
+
+if (webFallback) {
+  LINKING_ERROR = webFallback.LINKING_ERROR;
+}
+
 const createUnavailableModule = (): Spec => {
   const warn = () => {
-    if (shouldLogWarnings) {
+    if (shouldLogWarnings && Platform.OS !== 'web') {
       console.warn(LINKING_ERROR);
     }
   };
@@ -59,10 +77,15 @@ const createUnavailableModule = (): Spec => {
   };
 };
 
-if (!moduleImpl && shouldLogWarnings) {
+if (!moduleImpl && shouldLogWarnings && Platform.OS !== 'web') {
   console.warn(LINKING_ERROR);
 }
 
-export const isPitchDetectorModuleAvailable = moduleImpl != null;
+export let isPitchDetectorModuleAvailable = moduleImpl != null;
+
+if (webFallback) {
+  isPitchDetectorModuleAvailable = webFallback.isPitchDetectorModuleAvailable;
+  moduleImpl = webFallback.default;
+}
 
 export default moduleImpl ?? createUnavailableModule();

@@ -5,6 +5,8 @@ export interface PitchEvent {
   cents: number;
   probability: number;
   noteName: string;
+  /** Optional audio level in decibels (dBFS). */
+  levelDb?: number;
   /** Optional monotonic timestamp (ms) provided by the native detector for JS sync. */
   timestamp?: number;
 }

@@ -10,7 +10,7 @@ export class PitchSmoother {
   private readonly confAlpha: number;
   private smoothedConfidence = 0;
 
-  constructor(maxSize = 15, confAlpha = 0.15) {
+  constructor(maxSize = 25, confAlpha = 0.18) {
     this.maxSize = maxSize;
     this.confAlpha = confAlpha;
   }
